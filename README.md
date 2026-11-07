@@ -36,7 +36,7 @@ It works offline after the first visit.
 
 ## Publishing changes
 
-The site is served by GitHub Pages from the `main` branch. Pushing to `main` updates it for everyone within a minute or two. Phones get the new version the next time the app is opened with a signal. Run both test commands before pushing, and bump `VERSION` in `sw.js`.
+The site is served by GitHub Pages from the `main` branch. Pushing to `main` updates it for everyone within a minute or two. Phones get the new version the next time the app is opened with a signal. Run all three test commands before pushing, and bump `VERSION` in `sw.js`.
 
 ## Development
 
@@ -46,6 +46,7 @@ No build step: plain HTML, CSS and JavaScript modules.
 npm start          # serve at http://localhost:8080
 npm test           # logic unit tests (matching, list building, suggestions, prices)
 npm install && npm run test:ui   # clicks through the app in a simulated browser
+npm run test:phone               # every screen at phone size in real Chrome; fails if anything is too wide
 ```
 
 Files:
