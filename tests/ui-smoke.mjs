@@ -1,0 +1,269 @@
+// Clicks through the real app in a simulated browser (jsdom). Run: npm run test:ui
+import { JSDOM } from 'jsdom';
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script[\s\S]*?<\/script>/g, '');
+const dom = new JSDOM(html, { url: 'https://example.test/', pretendToBeVisual: true });
+const { window } = dom;
+const def = (k, v) => Object.defineProperty(globalThis, k, { value: v, configurable: true, writable: true });
+for (const k of ['window', 'document', 'localStorage', 'history', 'navigator', 'HTMLElement', 'Event', 'Blob', 'File', 'URL'])
+  def(k, k === 'window' ? window : window[k]);
+def('confirm', () => true);
+def('alert', (m) => { throw new Error(`alert: ${m}`); });
+window.scrollTo = () => {};
+def('location', window.location);
+
+const $ = (s) => window.document.querySelector(s);
+const $$ = (s) => [...window.document.querySelectorAll(s)];
+const click = (el) => { if (!el) throw new Error('missing element'); el.dispatchEvent(new window.MouseEvent('click', { bubbles: true })); };
+const tick = () => new Promise((r) => setTimeout(r, 30));
+const text = (el) => el.textContent.replace(/\s+/g, ' ').trim();
+let failures = 0;
+const check = (cond, label) => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++; };
+const card = (name) => $$('.recipe-card').find((c) => text(c).includes(name));
+
+await import(pathToFileURL(path.join(root, 'js/app.js')).href);
+
+// 1. Recipes tab
+check($('#title').textContent === 'Recipes', 'opens on Recipes');
+check($$('.recipe-card').length === 8, `shows 8 sample recipes (${$$('.recipe-card').length})`);
+
+// 2. Add two meals
+click(card('Chicken Stir Fry').querySelector('[data-action="toggle-week"]'));
+click(card('Chicken Fajitas').querySelector('[data-action="toggle-week"]'));
+check($('#week-badge').textContent === '2' && !$('#week-badge').hidden, 'badge shows 2 meals');
+check(text(card('Chicken Stir Fry')).includes('Added'), 'card shows Added');
+
+// Search
+const search = $('#recipe-search');
+search.value = 'tortilla';
+search.dispatchEvent(new window.Event('input', { bubbles: true }));
+check($$('.recipe-card').length === 3, `search by ingredient "tortilla" finds 3 (${$$('.recipe-card').length})`);
+search.value = '';
+search.dispatchEvent(new window.Event('input', { bubbles: true }));
+
+// 3. This Week list
+click($('[data-tab="week"]'));
+check($('#title').textContent === 'This Week', 'switches to This Week');
+const items = () => $$('.item');
+const item = (name) => items().find((i) => text(i.querySelector('.iname')) === name);
+const pepper = item('Bell peppers');
+check(pepper && text(pepper).includes('Chicken Stir Fry') && text(pepper).includes('Chicken Fajitas'), 'bell peppers merged across both meals');
+check(items().filter((i) => text(i.querySelector('.iname')) === 'Yellow onion').length === 1, 'yellow onion listed once');
+const groups = $$('.group-name').map(text);
+check(groups[0] === 'Produce' && groups.at(-1).startsWith('Staples'), `grouped by section: ${groups.join(' | ')}`);
+check(item('Vegetable oil')?.classList.contains('done'), 'staple (vegetable oil) starts checked');
+
+// 4. Check off
+click(item('Bell peppers').querySelector('.check'));
+check(item('Bell peppers').classList.contains('done'), 'checking an item marks it done');
+check(text($$('.section-title').find((e) => text(e).startsWith('Shopping list'))).includes('2/'), 'progress count updates');
+
+// 5. Extra item
+$('#add-item').focus();
+$('#add-item').value = 'Paper towels';
+$('#add-item-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+check(item('Paper towels') && text(item('Paper towels')).includes('Added by you'), 'manual item added');
+check(window.document.activeElement?.id === 'add-item', 'keyboard stays on the add field');
+
+// 6. Prices: no stores to start; stores get added from the price screen
+const settingsNow = () => JSON.parse(window.localStorage.getItem('meal-planner:v1') || '{"settings":{}}').settings;
+check(!$('.store-picker') && text($('#view')).includes('Tap the + $'), 'no stores yet: shows a hint instead of totals');
+click(item('Rice').querySelector('.tag'));
+await tick();
+check($('#sheet-title')?.textContent === 'Rice', 'price sheet opens');
+check(!$('.price-input') && window.document.activeElement?.classList.contains('ns-name'), 'no store rows yet; focus on the store name');
+check(text($('[data-action="add-new-store-row"]')) === '+ Another store', 'offers "+ Another store"');
+$('.ns-price').value = '2.49';
+let alerted = '';
+def('alert', (m) => { alerted = m; });
+click($('[data-action="save-item"]'));
+check(alerted.includes('Which store') && $('.sheet'), 'a price with no store asks which store');
+def('alert', (m) => { throw new Error(`alert: ${m}`); });
+$('.ns-name').value = 'Aldi';
+click($('[data-action="add-new-store-row"]'));
+check($$('.new-store-row').length === 2 && window.document.activeElement === $$('.ns-name')[1], 'second store row added and focused');
+$$('.ns-name')[1].value = 'jewel';
+$$('.ns-price')[1].value = '$3.19';
+click($('[data-action="save-item"]'));
+await tick();
+check(!$('.sheet'), 'sheet closes after save');
+check(settingsNow().stores.join() === 'Aldi,jewel' && settingsNow().currentStore === 'Aldi', 'two stores added in one go; first becomes current');
+check(text(item('Rice').querySelector('.tag')) === '$2.49', 'tag shows Aldi price');
+let totals = $$('.store-picker [data-action="pick-store"]').map(text);
+check(totals.length === 2 && totals[0].includes('~$2.49') && totals[1].includes('~$3.19'), `store totals: ${totals.join(' / ')}`);
+click($$('.store-picker [data-action="pick-store"]')[1]);
+check(text(item('Rice').querySelector('.tag')) === '$3.19', 'switching store shows Jewel price');
+click($$('.store-picker [data-action="pick-store"]')[0]);
+
+click(item('Rice').querySelector('.tag'));
+await tick();
+check($$('.price-input').map((i) => i.dataset.store).join() === 'Aldi,jewel', 'reopening shows both stores, cheapest first');
+check(window.document.activeElement?.dataset.store === 'Aldi', 'focus on the current store');
+click($('[data-action="close-sheet"]'));
+await tick();
+
+// Beef gravy at Target
+$('#add-item').focus();
+$('#add-item').value = 'Beef gravy';
+$('#add-item-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+click(item('Beef gravy').querySelector('.tag'));
+await tick();
+check($$('.price-input').map((i) => i.dataset.store).join() === 'Aldi', 'current store row shown');
+check($$('[data-action="add-price-row"]').map(text).join() === '+ jewel', `other saved stores offered as buttons: ${$$('[data-action="add-price-row"]').map(text).join()}`);
+click($('[data-action="add-price-row"][data-store="jewel"]'));
+check($$('.price-input').map((i) => i.dataset.store).join() === 'Aldi,jewel' && !$('[data-action="add-price-row"]'), 'tapping + jewel adds a jewel row');
+check(window.document.activeElement?.dataset.store === 'jewel', 'focus on the new jewel row');
+click($('[data-action="add-new-store-row"]'));
+$('.ns-name').value = 'Target';
+$('.ns-price').value = '2.79';
+click($('[data-action="save-item"]'));
+await tick();
+check(text(item('Beef gravy').querySelector('.tag')) === '$2.79Target', `gravy shows Target price: ${text(item('Beef gravy').querySelector('.tag'))}`);
+totals = $$('.store-picker [data-action="pick-store"]').map(text);
+check(totals.length === 3 && totals[2].includes('Target'), `Target joins the estimate: ${totals.join(' / ')}`);
+
+// Settings: rename and remove stores
+click($('[data-action="open-settings"]'));
+await tick();
+check($$('.store-row').map(text).join(' | ').includes('jewel1 price'), `store rows show price counts: ${$$('.store-row').map(text).join(' | ')}`);
+def('prompt', () => 'Jewel');
+click($('[data-action="rename-store"][data-value="jewel"]'));
+check(settingsNow().stores.join() === 'Aldi,Jewel,Target', 'renamed jewel → Jewel');
+check(JSON.parse(window.localStorage.getItem('meal-planner:v1')).prices.rice.Jewel.price === 3.19, 'rename kept the price');
+click($('[data-action="remove-store"][data-value="Target"]'));
+check(settingsNow().stores.join() === 'Aldi,Jewel', 'Target removed');
+check(!JSON.parse(window.localStorage.getItem('meal-planner:v1')).prices['beef gravy'], 'Target prices removed with it');
+click($('[data-action="close-sheet"]'));
+await tick();
+check($$('.store-picker [data-action="pick-store"]').length === 2, 'estimate back to two stores');
+
+// "+ Store" button on the estimate: add a new store, or pick a saved one
+check(!!$('.store-picker [data-action="choose-store"]'), 'estimate has a + Store button');
+click($('.store-picker [data-action="choose-store"]'));
+await tick();
+check($('#sheet-title')?.textContent === 'Where are you shopping?', 'store chooser opens');
+check($$('[data-action="set-store"]').map(text).join() === '✓ Aldi,Jewel', `lists saved stores: ${$$('[data-action="set-store"]').map(text).join()}`);
+$('#new-store-name').value = 'Corner Market';
+$('#choose-store-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+await tick();
+check(!$('.sheet') && settingsNow().stores.join() === 'Aldi,Jewel,Corner Market', 'new store added from the estimate');
+check(settingsNow().currentStore === 'Corner Market', 'new store becomes the current store');
+check($$('.store-picker [data-action="pick-store"]').map(text).some((t) => t.startsWith('Corner Market')), 'current store shows in the estimate even with no prices');
+click($('.store-picker [data-action="choose-store"]'));
+await tick();
+click($('[data-action="set-store"][data-store="Jewel"]'));
+await tick();
+check(!$('.sheet') && settingsNow().currentStore === 'Jewel', 'picking a saved store sets it as current');
+
+// Settings: add a store there too
+click($('[data-action="open-settings"]'));
+await tick();
+$('#add-store').focus();
+$('#add-store').value = 'Costco';
+$('#add-store-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+check(settingsNow().stores.includes('Costco') && $$('.store-row').some((r) => text(r).startsWith('Costco')), 'store added from Settings');
+click($('[data-action="close-sheet"]'));
+await tick();
+click($$('.store-picker [data-action="pick-store"]')[0]);
+
+// 7. What Else
+click($('[data-tab="else"]'));
+const sugg = $$('.suggestion');
+check(sugg.length > 0, `What Else shows ${sugg.length} suggestions`);
+console.log('      ' + sugg.map((s) => `${text(s.querySelector('h3'))} [${text(s.querySelector('.score'))}]`).join('; '));
+check(!sugg.some((s) => /Stir Fry|Fajitas/.test(text(s.querySelector('h3')))), 'planned meals are not suggested');
+const quesadillas = sugg.find((s) => text(s).includes('Quesadillas'));
+check(quesadillas && text(quesadillas).includes('Chicken breast (used up this week)'),
+  `chicken breast is used up, not leftover: ${quesadillas && text(quesadillas.querySelector('dl'))}`);
+check(quesadillas && !/Left over from this week:[^N]*Chicken breast/.test(text(quesadillas)), 'used-up item not listed as leftover');
+click($('[data-tab="week"]'));
+check(text(item('Chicken breast')).includes('uses all'), `list shows "uses all": ${text(item('Chicken breast').querySelector('.uses'))}`);
+click($('[data-tab="else"]'));
+
+// 8. Pantry on
+click($('[data-action="open-settings"]'));
+await tick();
+const pantrySwitch = $('[data-setting="pantryEnabled"]');
+pantrySwitch.checked = true;
+pantrySwitch.dispatchEvent(new window.Event('change', { bubbles: true }));
+check(!$('#pantry-tab').hidden, 'Pantry tab appears');
+check($('[data-setting="pantryEnabled"]').checked, 'settings sheet redraws with pantry on');
+click($('[data-action="close-sheet"]'));
+await tick();
+click($('#pantry-tab'));
+check($$('.pantry-item').some((p) => text(p).includes('Bell peppers')), 'checked item moved into pantry');
+click($('[data-tab="week"]'));
+check(item('Bell peppers').classList.contains('done'), 'still checked on the list with pantry on');
+
+// 9. New recipe with pasted list
+click($('[data-tab="recipes"]'));
+click($('[data-action="new-recipe"]'));
+await tick();
+$('#r-name').value = 'Pepper Pasta';
+click($('[data-action="toggle-paste"]'));
+$('#paste-text').value = '1 lb penne\n2 bell peppers, sliced\n1/2 cup parmesan cheese\nSalt to taste';
+click($('[data-action="apply-paste"]'));
+const rows = $$('.ing-row').map((r) => `${r.querySelector('.ing-amt').value}|${r.querySelector('.ing-name').value}`);
+check(rows.length === 4 && rows[1] === '2|bell peppers, sliced', `pasted rows: ${rows.join(' ; ')}`);
+check($$('.ing-row .ing-all').length === 4, 'every ingredient row has an All toggle');
+$$('.ing-row')[0].querySelector('.ing-all').checked = true; // uses the whole box of penne
+click($('[data-action="save-recipe"]'));
+await tick();
+check($$('.recipe-card').length === 9 && card('Pepper Pasta'), 'new recipe saved');
+const savedPasta = JSON.parse(window.localStorage.getItem('meal-planner:v1')).recipes.find((r) => r.name === 'Pepper Pasta');
+check(savedPasta.ingredients[0].usesAll === true && !savedPasta.ingredients[1].usesAll, 'All toggle saved on the right ingredient');
+click(card('Pepper Pasta').querySelector('.info'));
+await tick();
+check(text($('.ing-view li')).includes('uses all'), 'recipe view shows "uses all"');
+click($('[data-action="close-sheet"]'));
+await tick();
+click($('[data-tab="else"]'));
+const pp = $$('.suggestion').find((s) => text(s).includes('Pepper Pasta'));
+check(pp && text(pp).includes('Bell peppers') && text(pp).includes('Parmesan cheese'), `new recipe matched via bell peppers: ${pp && text(pp.querySelector('dl'))}`);
+
+// 10. Unsaved edits prompt
+click($('[data-tab="recipes"]'));
+click(card('Pepper Pasta').querySelector('.info'));
+await tick();
+click($('[data-action="edit-recipe"]'));
+await tick();
+let asked = false;
+def('confirm', () => { asked = true; return false; });
+$('#r-name').value = 'Changed';
+click($('[data-action="close-sheet"]'));
+await tick();
+check(asked && $('.sheet'), 'asks before discarding unsaved edits');
+def('confirm', () => true);
+click($('[data-action="close-sheet"]'));
+await tick();
+check(!$('.sheet'), 'closes after confirming');
+
+// 11. Saved
+const saved = JSON.parse(window.localStorage.getItem('meal-planner:v1'));
+check(saved.recipes.length === 9 && saved.prices.rice.Aldi.price === 2.49 && saved.settings.pantryEnabled, 'everything persisted to storage');
+
+// 12. New week
+click($('[data-tab="week"]'));
+click($('[data-action="new-week"]'));
+check(items().length === 0 && $('#week-badge').hidden, 'new week clears the list');
+
+// 13. Older saved data: sample recipes pick up "uses all" flags, her own recipes don't change
+const store = await import(pathToFileURL(path.join(root, 'js/store.js')).href);
+store.importJSON(JSON.stringify({
+  version: 1,
+  recipes: [
+    { id: 'sample-tacos', name: 'Beef Tacos', sample: true, ingredients: [{ amount: '1 lb', name: 'Ground beef' }, { amount: '8', name: 'Tortillas' }] },
+    { id: 'mine', name: 'My Tacos', ingredients: [{ amount: '1 lb', name: 'Ground beef' }] },
+  ],
+}));
+const migrated = store.get().recipes;
+check(migrated[0].ingredients[0].usesAll === true && !migrated[0].ingredients[1].usesAll, 'old sample recipe gets the flag');
+check(!migrated[1].ingredients[0].usesAll, 'her own recipe is left alone');
+check(store.get().version === 2, 'saved data upgraded to version 2');
+
+console.log(failures ? `\n${failures} FAILED` : '\nALL PASSED');
+process.exit(failures ? 1 : 0);
