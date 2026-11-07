@@ -4,6 +4,10 @@
 
 A phone-first meal planner. Pick meals, get one combined shopping list, check things off, and see what else you can make with what's left over.
 
+**Open it: https://zandy56.github.io/grub-bud/**
+
+Everyone who opens that link gets their own separate copy. Recipes, lists and prices are kept on each person's phone and never shared.
+
 ## What it does
 
 - **Recipes**: save recipes with ingredients and notes. Tap **+ Add** to put a meal on this week's list. Ingredient lists can be pasted in one go ("Paste a list").
@@ -21,14 +25,18 @@ Everything is stored **on the phone only** (browser local storage), and nothing 
 
 > On iPhone, add the app to the Home Screen (below). Safari can clear data for websites that haven't been opened in a while, but Home Screen apps are kept.
 
-## Installing on her phone
+## Installing on a phone
 
-It's a plain static website, so it needs to be hosted somewhere with HTTPS (GitHub Pages works and is free). Then:
+Open **https://zandy56.github.io/grub-bud/**, then:
 
 - **iPhone**: open the link in Safari → Share → **Add to Home Screen**.
 - **Android**: open in Chrome → ⋮ menu → **Add to Home screen** / **Install app**.
 
 It works offline after the first visit.
+
+## Publishing changes
+
+The site is served by GitHub Pages from the `main` branch. Pushing to `main` updates it for everyone within a minute or two. Phones get the new version the next time the app is opened with a signal. Run both test commands before pushing, and bump `VERSION` in `sw.js`.
 
 ## Development
 
