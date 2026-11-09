@@ -77,6 +77,35 @@ $('#add-item-form').dispatchEvent(new window.Event('submit', { bubbles: true, ca
 check(item('Paper towels') && text(item('Paper towels')).includes('Added by you'), 'manual item added');
 check(window.document.activeElement?.id === 'add-item', 'keyboard stays on the add field');
 
+// 5b. A staple added by hand is its own row to buy; the staple row stays as it was
+const oilRows = () => items().filter((i) => text(i.querySelector('.iname')) === 'Vegetable oil');
+check(oilRows().length === 1 && oilRows()[0].classList.contains('done'), 'vegetable oil is on the list once, as a staple you have');
+$('#add-item').value = 'Vegetable oil';
+$('#add-item-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+const boughtOil = () => oilRows().find((r) => !r.classList.contains('done') || text(r).includes('Added by you'));
+const stapleOil = () => oilRows().find((r) => r !== boughtOil());
+check(oilRows().length === 2, `adding a staple by hand gives it its own row (${oilRows().length})`);
+check(boughtOil() && !boughtOil().classList.contains('done') && text(boughtOil()).includes('Added by you'), 'the added one is to buy, marked Added by you');
+check(boughtOil() && !/\d|Fajitas|Stir Fry/.test(text(boughtOil().querySelector('.uses'))), 'the added one has no amount or recipe');
+check(!text(boughtOil().closest('.list-group').querySelector('.group-name')).startsWith('Checked off'), 'the added one sits in its store section, not Checked off');
+check(stapleOil() && stapleOil().classList.contains('done') && /Stir Fry|Fajitas/.test(text(stapleOil())), 'the staple row keeps its recipes and stays checked');
+click(boughtOil().querySelector('.check'));
+check(oilRows().every((r) => r.classList.contains('done')) && oilRows().length === 2, 'checking the added one checks only it');
+const savedWeek = JSON.parse(window.localStorage.getItem('meal-planner:v1')).week;
+check(savedWeek.checked.includes('vegetable oil') && !savedWeek.stapleNeeds.includes('vegetable oil'), 'its check is saved apart from the staple');
+click(oilRows().find((r) => text(r).includes('Added by you')).querySelector('.check'));
+$('#add-item').value = 'Vegetable oil';
+$('#add-item-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+check(oilRows().length === 2, 'adding it a second time does not add a third row');
+click(boughtOil().querySelector('.body'));
+check(!$('#item-staple') && text($('#sheet-root')).includes('staple you added'), 'its sheet explains it instead of offering the staple switch');
+click($('[data-action="remove-extra"]'));
+await tick(); // the sheet closes through history.back()
+check(oilRows().length === 1 && oilRows()[0].classList.contains('done') && JSON.parse(window.localStorage.getItem('meal-planner:v1')).staples.includes('vegetable oil'), 'removing it leaves the staple as it was');
+$('#add-item').value = 'Bell peppers';
+$('#add-item-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+check(items().filter((i) => text(i.querySelector('.iname')) === 'Bell peppers').length === 1, 'an ordinary item already on the list is still not added twice');
+
 // 6. Prices: no stores to start; stores get added from the price screen
 const settingsNow = () => JSON.parse(window.localStorage.getItem('meal-planner:v1') || '{"settings":{}}').settings;
 check(!$('.store-picker') && text($('#view')).includes('Tap the + $'), 'no stores yet: shows a hint instead of totals');

@@ -79,6 +79,32 @@ test('buildList respects custom section and name overrides', () => {
   assert.equal(rice.section, 'Other');
 });
 
+test('a staple added by hand is its own row to buy, with no amounts or recipes', () => {
+  const recs = [{ id: 'p', name: 'Pasta', ingredients: [{ amount: '2 tbsp', name: 'Olive oil' }, { amount: '1 lb', name: 'Spaghetti' }] }];
+  const week = { recipeIds: ['p'], checked: [], extras: [{ key: 'olive oil', name: 'Olive oil' }, { key: 'salt', name: 'Salt' }], stapleNeeds: [] };
+  const list = buildList({ recipes: recs, week, staples: ['olive oil', 'salt'] });
+  const oils = list.filter((i) => i.key === 'olive oil');
+  assert.equal(oils.length, 2);
+  const staple = oils.find((i) => i.staple);
+  const toBuy = oils.find((i) => !i.staple);
+  assert.equal(staple.id, 'olive oil');
+  assert.equal(staple.uses.length, 1);
+  assert.equal(staple.extra, false);
+  assert.equal(toBuy.id, 'extra:olive oil');
+  assert.deepEqual(toBuy.uses, []);
+  assert.equal(toBuy.extra, true);
+  assert.equal(isChecked(staple, { week }), true, 'the staple still counts as on hand');
+  assert.equal(isChecked(toBuy, { week }), false, 'the added one is still to buy');
+  assert.equal(isChecked(toBuy, { week: { ...week, checked: ['olive oil'] } }), true);
+  // A staple no meal uses, added by hand: one row, to buy.
+  const salt = list.filter((i) => i.key === 'salt');
+  assert.equal(salt.length, 1);
+  assert.equal(salt[0].staple, false);
+  assert.equal(isChecked(salt[0], { week }), false);
+  // Ordinary items still merge, and every row id is unique.
+  assert.equal(new Set(list.map((i) => i.id)).size, list.length);
+});
+
 test('isChecked: staples, week checks, and pantry mode', () => {
   const week = { recipeIds: [], checked: ['onion'], stapleNeeds: [] };
   assert.equal(isChecked({ key: 'salt', staple: true }, { week }), true);

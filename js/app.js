@@ -277,15 +277,15 @@ function itemRow(item, s, ctx) {
     const prices = s.prices[item.key] || {};
     const here = prices[s.settings.currentStore];
     const best = cheapest(prices, s.settings.stores);
-    if (here) tag = `<button class="tag has" data-action="edit-item" data-key="${esc(item.key)}" data-focus="price">${formatPrice(here.price)}</button>`;
-    else if (best) tag = `<button class="tag has" data-action="edit-item" data-key="${esc(item.key)}" data-focus="price">${formatPrice(best.price)}<small>${esc(best.store)}</small></button>`;
-    else tag = `<button class="tag" data-action="edit-item" data-key="${esc(item.key)}" data-focus="price" aria-label="Add a price for ${esc(item.name)}">+ $</button>`;
+    if (here) tag = `<button class="tag has" data-action="edit-item" data-key="${esc(item.id)}" data-focus="price">${formatPrice(here.price)}</button>`;
+    else if (best) tag = `<button class="tag has" data-action="edit-item" data-key="${esc(item.id)}" data-focus="price">${formatPrice(best.price)}<small>${esc(best.store)}</small></button>`;
+    else tag = `<button class="tag" data-action="edit-item" data-key="${esc(item.id)}" data-focus="price" aria-label="Add a price for ${esc(item.name)}">+ $</button>`;
   }
   return `
     <div class="item ${done ? 'done' : ''}">
-      <button class="check" data-action="toggle-check" data-key="${esc(item.key)}" role="checkbox" aria-checked="${done}"
+      <button class="check" data-action="toggle-check" data-key="${esc(item.id)}" role="checkbox" aria-checked="${done}"
         aria-label="${esc(item.name)}"><span></span></button>
-      <button class="body" data-action="edit-item" data-key="${esc(item.key)}">
+      <button class="body" data-action="edit-item" data-key="${esc(item.id)}">
         <span class="iname">${esc(item.name)}</span>
         ${uses ? `<span class="uses">${esc(uses)}</span>` : ''}
       </button>
@@ -293,10 +293,11 @@ function itemRow(item, s, ctx) {
     </div>`;
 }
 
-function toggleCheck(key) {
+function toggleCheck(id) {
   store.update((s) => {
-    const item = listFor(s).find((i) => i.key === key);
+    const item = listFor(s).find((i) => i.id === id);
     if (!item) return;
+    const { key } = item;
     if (item.staple) store.toggleIn(s.week.stapleNeeds, key);
     else if (s.settings.pantryEnabled) {
       store.toggleIn(s.pantry, key);
@@ -586,10 +587,11 @@ function newStoreRow() {
     </div>`;
 }
 
-function editItem(key, focus) {
+function editItem(id, focus) {
   const s = store.get();
-  const item = listFor(s).find((i) => i.key === key);
+  const item = listFor(s).find((i) => i.id === id);
   if (!item) return;
+  const { key } = item;
   const { showPrices, stores, currentStore } = s.settings;
   const prices = s.prices[key] || {};
   // Stores with a price for this item (cheapest first), then the store the user is at.
@@ -616,11 +618,12 @@ function editItem(key, focus) {
         </div>
         <datalist id="store-names">${otherStores.map((st) => `<option value="${esc(st)}">`).join('')}</datalist>
         <p class="hint">The price for one of whatever you usually buy: a bag, a pack, a pound. Clear a price to remove it.</p>` : ''}
+      ${item.stapleCopy ? `<p class="hint">A staple you added to buy this week. Your staple stays on the list as “usually on hand”.</p>` : `
       <span class="label">Settings</span>
       <div class="card">
         <label class="toggle-row"><div><strong>Always have this</strong><p>Treat it as a staple, like salt. It won’t count in “What Else?”.</p></div>
           <input type="checkbox" class="switch" id="item-staple" ${item.staple ? 'checked' : ''}></label>
-      </div>
+      </div>`}
       <label class="label" for="item-name">Name</label>
       <input class="field" id="item-name" value="${esc(item.name)}" autocomplete="off">
       <label class="label" for="item-section">Store section</label>
@@ -630,7 +633,7 @@ function editItem(key, focus) {
       ${item.extra ? `<button type="button" class="btn block danger" style="margin-top:24px" data-action="remove-extra" data-key="${esc(key)}">Remove from list</button>` : ''}`,
     actions: `
       <button class="btn" data-action="close-sheet">Cancel</button>
-      <button class="btn primary" data-action="save-item" data-key="${esc(key)}">Save</button>`,
+      <button class="btn primary" data-action="save-item" data-key="${esc(id)}">Save</button>`,
     onMount: (root) => {
       if (focus === 'price') {
         const here = $$('.price-input', root).find((i) => i.dataset.store === currentStore);
@@ -640,7 +643,10 @@ function editItem(key, focus) {
   });
 }
 
-function saveItem(key) {
+function saveItem(id) {
+  const item = listFor(store.get()).find((i) => i.id === id);
+  if (!item) return;
+  const { key } = item;
   const root = $('#sheet-root');
   const priceInputs = $$('.price-input', root);
   const newRows = $$('.new-store-row', root).map((row) => ({ name: $('.ns-name', row), price: $('.ns-price', row) }));
@@ -659,7 +665,8 @@ function saveItem(key) {
   }
   const name = $('#item-name', root).value.trim();
   const section = $('#item-section', root).value;
-  const staple = $('#item-staple', root).checked;
+  const stapleBox = $('#item-staple', root); // not shown for a staple added by hand
+  const staple = stapleBox ? stapleBox.checked : null;
   store.update((s) => {
     const meta = (s.ingredients[key] ||= {});
     if (name) meta.name = name;
@@ -667,7 +674,7 @@ function saveItem(key) {
     if (section === guessSection(key)) delete meta.section;
     else meta.section = section;
     const isStaple = s.staples.includes(key);
-    if (staple !== isStaple) store.toggleIn(s.staples, key);
+    if (staple !== null && staple !== isStaple) store.toggleIn(s.staples, key);
     const setPrice = (storeName, price) => {
       s.prices[key] ||= {};
       if (price === null) delete s.prices[key][storeName];
@@ -964,7 +971,7 @@ const forms = {
     const key = ingredientKey(name);
     if (!key) return;
     const s = store.get();
-    if (listFor(s).some((i) => i.key === key)) {
+    if (listFor(s).some((i) => i.key === key && !i.staple)) {
       toast(`${name} is already on the list`);
       input.value = '';
       return;

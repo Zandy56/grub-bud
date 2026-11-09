@@ -16,7 +16,7 @@ Everyone who opens that link gets their own separate copy. Recipes, lists and pr
 - **What Else?**: other saved recipes ranked by how much of them is already on the list (or in the pantry), with exactly what's still missing. In the recipe editor, tick **All** on an ingredient the recipe uses up completely (a whole tub of sour cream). When that meal is planned, the ingredient doesn't count as a leftover.
 - **Pantry** *(optional, turn on in Settings)*: things you check off stay checked from week to week.
 - **Prices** *(can be turned off in Settings)*: tap **+ $** on an item to save what it costs and where. There are no stores to begin with; typing a new store name on an item's price screen adds it. The estimate shows a total for each store that has a price for something on this week's list. Stores can be renamed or removed in Settings.
-- **Staples**: salt, oil and similar are assumed on hand and left out of recipe matching. Editable in Settings.
+- **Staples**: salt, oil and similar are assumed on hand and left out of recipe matching. Editable in Settings. Adding a staple to the list by hand ("we're out of oil") gives it its own row to buy, with no amounts or recipes, separate from the staple's usual row.
 
 Ingredients match by name, ignoring plurals, capitals and prep words, so "Yellow Onions, diced" matches "yellow onion".
 

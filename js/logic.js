@@ -107,21 +107,26 @@ export function buildList({ recipes, week, ingredients = {}, staples = [] }) {
   const byKey = new Map();
   const chosen = recipes.filter((r) => week.recipeIds.includes(r.id));
 
+  const newItem = (key, rawName) => {
+    const meta = ingredients[key] || {};
+    return {
+      id: key, // unique per row; the same as key except for a staple added by hand (below)
+      key,
+      name: meta.name || cleanName(rawName),
+      section: meta.section || guessSection(key),
+      uses: [],
+      usedUp: false, // a planned meal uses the whole thing, so none is left over
+      staple: stapleSet.has(key),
+      extra: false,
+    };
+  };
   const touch = (key, rawName) => {
-    if (!byKey.has(key)) {
-      const meta = ingredients[key] || {};
-      byKey.set(key, {
-        key,
-        name: meta.name || cleanName(rawName),
-        section: meta.section || guessSection(key),
-        uses: [],
-        usedUp: false, // a planned meal uses the whole thing, so none is left over
-        staple: stapleSet.has(key),
-        extra: false,
-      });
-    }
+    if (!byKey.has(key)) byKey.set(key, newItem(key, rawName));
     return byKey.get(key);
   };
+  // A staple added by hand means "we're out, buy some": its own row, to buy like
+  // any other item, with no amounts or recipes, separate from the staple's row.
+  const boughtStaples = [];
 
   for (const recipe of chosen) {
     for (const ing of recipe.ingredients) {
@@ -133,11 +138,15 @@ export function buildList({ recipes, week, ingredients = {}, staples = [] }) {
     }
   }
   for (const extra of week.extras || []) {
+    if (stapleSet.has(extra.key)) {
+      boughtStaples.push({ ...newItem(extra.key, extra.name), id: `extra:${extra.key}`, staple: false, extra: true, stapleCopy: true });
+      continue;
+    }
     const item = touch(extra.key, extra.name);
     item.extra = true;
   }
 
-  return [...byKey.values()].sort(
+  return [...byKey.values(), ...boughtStaples].sort(
     (a, b) =>
       SECTIONS.indexOf(a.section) - SECTIONS.indexOf(b.section) ||
       a.name.localeCompare(b.name),
