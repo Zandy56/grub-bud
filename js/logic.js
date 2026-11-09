@@ -144,7 +144,7 @@ export function buildList({ recipes, week, ingredients = {}, staples = [] }) {
   );
 }
 
-/** Is a list item checked off? Staples count as checked unless she marked one as needed. */
+/** Is a list item checked off? Staples count as checked unless the user marked one as needed. */
 export function isChecked(item, { week, pantry = [], pantryEnabled = false }) {
   if (item.staple) return !(week.stapleNeeds || []).includes(item.key);
   if (pantryEnabled) return pantry.includes(item.key);
@@ -355,7 +355,7 @@ export function priceCounts(prices) {
 
 /**
  * Stores worth showing in this week's cost estimate: ones with a price for at
- * least one item on the list, plus the store she's shopping at.
+ * least one item on the list, plus the store the user is shopping at.
  */
 export function storesForEstimate(items, prices, stores, currentStore) {
   return stores.filter((s) => s === currentStore || items.some((i) => prices[i.key]?.[s]));

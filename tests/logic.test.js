@@ -18,7 +18,7 @@ test('ingredient keys match plural, case and prep variations', () => {
   assert.equal(ingredientKey('   '), '');
 });
 
-test('cleanName drops prep notes but keeps the words she typed', () => {
+test('cleanName drops prep notes but keeps the words the user typed', () => {
   assert.equal(cleanName('Yellow Onion, diced'), 'Yellow Onion');
   assert.equal(cleanName('Rice (jasmine)'), 'Rice');
   assert.equal(ingredientKey('Salt to taste'), 'salt');
@@ -71,7 +71,7 @@ test('buildList merges duplicate ingredients across meals', () => {
   assert.equal(list[0].section, 'Produce');
 });
 
-test('buildList respects her section and name overrides', () => {
+test('buildList respects custom section and name overrides', () => {
   const week = { recipeIds: ['a'], checked: [], extras: [] };
   const list = buildList({ recipes, week, ingredients: { rice: { name: 'Jasmine rice', section: 'Other' } } });
   const rice = list.find((i) => i.key === 'rice');

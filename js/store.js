@@ -12,7 +12,7 @@ function freshState() {
   const state = {
     version: 2,
     recipes: SAMPLE_RECIPES.map((r) => ({ ...r, sample: true })),
-    ingredients: {}, // key -> { name, section } (her overrides)
+    ingredients: {}, // key -> { name, section } (the user's overrides)
     staples: [...DEFAULT_STAPLES],
     pantry: [],
     prices: {}, // key -> { store -> { price, date } }
@@ -40,7 +40,7 @@ function normalize(raw) {
   s.prices = raw.prices || {};
   s.plan = prunePlan(raw.plan, new Date(), s.settings.weekStartsMonday);
 
-  // v1 → v2: sample recipes gain "uses it all" flags. Her own recipes are untouched.
+  // v1 → v2: sample recipes gain "uses it all" flags. The user's own recipes are untouched.
   if ((raw.version || 1) < 2) {
     for (const recipe of s.recipes) {
       const original = recipe.sample && SAMPLE_RECIPES.find((x) => x.id === recipe.id);
@@ -66,7 +66,7 @@ export function load() {
     console.error('Could not load saved data', err);
     state = freshState();
   }
-  // Record how each ingredient is spelled in her recipes, so new ones match it.
+  // Record how each ingredient is spelled in the user's recipes, so new ones match it.
   for (const r of state.recipes) for (const ing of r.ingredients) rememberName(state, ing.name);
   // Ask the browser not to clear this data when space runs low.
   navigator.storage?.persist?.().catch(() => {});
@@ -87,7 +87,7 @@ export function save() {
   listeners.forEach((fn) => fn(state));
 }
 
-/** Save without redrawing (used while she's typing in the meal plan). */
+/** Save without redrawing (used while the user is typing in the meal plan). */
 export function persist() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -119,7 +119,7 @@ const toggleIn = (arr, value) => {
 };
 export { toggleIn };
 
-/** Remember how she spelled an ingredient, the first time it shows up. */
+/** Remember how the user spelled an ingredient, the first time it shows up. */
 export function rememberName(s, rawName) {
   const key = ingredientKey(rawName);
   if (!key) return key;
@@ -132,7 +132,7 @@ export function displayName(key) {
   return state.ingredients[key]?.name || key;
 }
 
-/** Every ingredient name she's used, for autocomplete. */
+/** Every ingredient name the user has used, for autocomplete. */
 export function knownIngredientNames() {
   const names = new Map();
   for (const r of state.recipes) {

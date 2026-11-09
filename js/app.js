@@ -396,7 +396,7 @@ function removeSheet() {
   document.body.style.overflow = '';
 }
 
-/** Close because she tapped ×, the backdrop, or Back. Asks first if there are unsaved edits. */
+/** Close because the user tapped ×, the backdrop, or Back. Asks first if there are unsaved edits. */
 function requestClose() {
   if (sheet?.isDirty?.() && !confirm('Discard your changes?')) return;
   if (sheet) sheet.isDirty = null;
@@ -544,7 +544,7 @@ function deleteRecipe(id) {
 
 let rowSeq = 0;
 
-/** A price line for a store she already has. */
+/** A price line for a store the user already has. */
 function priceRow(storeName, saved) {
   const id = `price-${++rowSeq}`;
   return `
@@ -572,7 +572,7 @@ function editItem(key, focus) {
   if (!item) return;
   const { showPrices, stores, currentStore } = s.settings;
   const prices = s.prices[key] || {};
-  // Stores with a price for this item (cheapest first), then the store she's at.
+  // Stores with a price for this item (cheapest first), then the store the user is at.
   const rowStores = stores
     .filter((st) => prices[st])
     .sort((a, b) => prices[a].price - prices[b].price);
@@ -643,7 +643,7 @@ function saveItem(key) {
   store.update((s) => {
     const meta = (s.ingredients[key] ||= {});
     if (name) meta.name = name;
-    // Only store the section if she changed it from the automatic guess.
+    // Only store the section if the user changed it from the automatic guess.
     if (section === guessSection(key)) delete meta.section;
     else meta.section = section;
     const isStaple = s.staples.includes(key);
@@ -933,7 +933,7 @@ const forms = {
     let name;
     store.update((s) => {
       name = addStore(s.settings, input.value);
-      s.settings.currentStore = name; // she's adding it because she's shopping there
+      s.settings.currentStore = name; // the user is adding it because they're shopping there
     });
     closeSheet();
     toast(`Added ${name}. Tap + $ on an item to save a price.`);
@@ -1029,7 +1029,7 @@ store.subscribe(() => {
   const active = document.activeElement?.id;
   render();
   if (sheet?.live) drawSheet(true);
-  // Keep the keyboard up after adding an item, so she can add several in a row.
+  // Keep the keyboard up after adding an item, so the user can add several in a row.
   if (['add-item', 'add-pantry', 'add-store', 'add-staple'].includes(active)) $(`#${active}`)?.focus();
 });
 

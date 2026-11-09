@@ -262,7 +262,7 @@ typeIn(firstDay, 'Beef tacos');
 typeIn($$('.plan-input')[13], 'Soup leftovers');
 check(document.activeElement !== null && $$('.plan-input')[0] === firstDay, 'typing does not redraw the page (keyboard stays up)');
 const savedPlan = JSON.parse(window.localStorage.getItem('meal-planner:v1')).plan;
-check(savedPlan[firstDay.dataset.date] === 'Beef tacos' && Object.keys(savedPlan).length === 2, 'plan saved as she types');
+check(savedPlan[firstDay.dataset.date] === 'Beef tacos' && Object.keys(savedPlan).length === 2, 'plan saved as the user types');
 typeIn($$('.plan-input')[13], '');
 check(Object.keys(JSON.parse(window.localStorage.getItem('meal-planner:v1')).plan).length === 1, 'clearing a day removes it');
 click($('[data-tab="recipes"]'));
@@ -291,9 +291,9 @@ check($$('.plan-input').every((i) => !i.value) && JSON.stringify(store0().plan) 
 check(JSON.stringify(store0().week) === listBefore, 'clearing the plan leaves the shopping list alone');
 check($('#plan-footer').hidden, 'Clear button hides when the plan is empty');
 typeIn($$('.plan-input')[2], 'Chili');
-check(!$('#plan-footer').hidden, 'Clear button appears as soon as she types something');
+check(!$('#plan-footer').hidden, 'Clear button appears as soon as the user types something');
 
-// 13. Older saved data: sample recipes pick up "uses all" flags, her own recipes don't change
+// 13. Older saved data: sample recipes pick up "uses all" flags, the user's own recipes don't change
 const store = await import(pathToFileURL(path.join(root, 'js/store.js')).href);
 store.importJSON(JSON.stringify({
   version: 1,
@@ -304,7 +304,7 @@ store.importJSON(JSON.stringify({
 }));
 const migrated = store.get().recipes;
 check(migrated[0].ingredients[0].usesAll === true && !migrated[0].ingredients[1].usesAll, 'old sample recipe gets the flag');
-check(!migrated[1].ingredients[0].usesAll, 'her own recipe is left alone');
+check(!migrated[1].ingredients[0].usesAll, 'a user-made recipe is left alone');
 check(store.get().version === 2, 'saved data upgraded to version 2');
 check(JSON.stringify(store.get().plan) === '{}', 'older backups without a plan get an empty one');
 
