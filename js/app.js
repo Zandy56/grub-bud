@@ -129,7 +129,7 @@ function planView(s) {
   const names = [...new Set([...plannedMeals(s), ...s.recipes].map((r) => r.name)), 'Leftovers', 'Eating out'];
   return `
     <datalist id="meal-names">${names.map((n) => `<option value="${esc(n)}">`).join('')}</datalist>
-    ${planWeeks().map((week) => `
+    ${planWeeks(new Date(), s.settings.weekStartsMonday).map((week) => `
       <div class="section-title"><span>${week.label}</span>
         <span class="plan-range">${week.days[0].month} ${week.days[0].day} – ${week.days[6].month} ${week.days[6].day}</span></div>
       <div class="card plan-week">
@@ -709,6 +709,9 @@ function openSettings() {
           <label class="toggle-row"><div><strong>Track prices</strong>
             <p>Save what things cost at each store and see an estimated total for the trip.</p></div>
             <input type="checkbox" class="switch" data-setting="showPrices" ${showPrices ? 'checked' : ''}></label>
+          <label class="toggle-row"><div><strong>Start week on Monday</strong>
+            <p>The meal plan runs Monday to Sunday instead of Sunday to Saturday.</p></div>
+            <input type="checkbox" class="switch" data-setting="weekStartsMonday" ${s.settings.weekStartsMonday ? 'checked' : ''}></label>
         </div>
 
         ${showPrices ? `

@@ -245,6 +245,19 @@ test('meal plan shows this week and next, Sunday to Saturday', () => {
   assert.equal(dec[1].days[6].iso, '2027-01-09');
 });
 
+test('meal plan can start on Monday', () => {
+  const wed = planWeeks(new Date(2026, 10, 11), true); // Wed Nov 11 2026
+  assert.equal(wed[0].days[0].iso, '2026-11-09');
+  assert.equal(wed[0].days[0].weekday, 'Mon');
+  assert.equal(wed[0].days[6].weekday, 'Sun');
+  // On a Sunday, "this week" is the one that started the Monday before
+  const sun = planWeeks(new Date(2026, 10, 15), true);
+  assert.equal(sun[0].days[0].iso, '2026-11-09');
+  assert.ok(sun[0].days[6].today);
+  assert.deepEqual(prunePlan({ '2026-11-08': 'old', '2026-11-09': 'Tacos' }, new Date(2026, 10, 15), true),
+    { '2026-11-09': 'Tacos' });
+});
+
 test('old plan days are dropped, this week and later are kept', () => {
   const kept = prunePlan({ '2026-11-07': 'old', '2026-11-08': 'Tacos', '2026-11-20': 'Soup', '2026-11-09': '  ' },
     new Date(2026, 10, 11));

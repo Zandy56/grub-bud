@@ -233,6 +233,8 @@ textarea.field { resize: vertical; min-height: 96px; }
   background: transparent;
   font-size: 17px; /* 16px+ stops iPhone from zooming in */
 }
+/* Chrome adds a dropdown arrow to boxes with suggestions; they still pop up while typing. */
+input[list]::-webkit-calendar-picker-indicator { display: none !important; }
 .plan-input:focus { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--surface); }
 
 /* ---------- Recipes ---------- */

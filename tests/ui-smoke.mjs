@@ -269,6 +269,17 @@ click($('[data-tab="recipes"]'));
 click($('[data-tab="plan"]'));
 check($$('.plan-input')[0].value === 'Beef tacos', 'plan is still there after switching tabs');
 check($$('#meal-names option').some((o) => o.value === 'Beef Tacos'), 'recipe names are suggested');
+check(text($('.plan-date')).startsWith('Sun'), 'plan starts on Sunday by default');
+const nextSunday = $$('.plan-input')[7]; // shown whether the week starts Sunday or Monday
+typeIn(nextSunday, 'Pizza night');
+click($('[data-action="open-settings"]'));
+const mondayToggle = $('[data-setting="weekStartsMonday"]');
+mondayToggle.checked = true;
+mondayToggle.dispatchEvent(new window.Event('change', { bubbles: true }));
+click($('[data-action="close-sheet"]'));
+await tick();
+check(text($('.plan-date')).startsWith('Mon') && text($$('.plan-date')[6]).startsWith('Sun'), 'Settings toggle makes the plan start on Monday');
+check($(`.plan-input[data-date="${nextSunday.dataset.date}"]`)?.value === 'Pizza night', 'entries stay on their dates after switching');
 
 // 13. Older saved data: sample recipes pick up "uses all" flags, her own recipes don't change
 const store = await import(pathToFileURL(path.join(root, 'js/store.js')).href);

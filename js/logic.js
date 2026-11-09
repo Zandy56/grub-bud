@@ -368,22 +368,28 @@ export function isoDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** The Sunday that starts the week containing `d`, as "YYYY-MM-DD". */
-export function weekStart(d) {
-  return isoDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay()));
+/** The first day (Sunday, or Monday if `mondayFirst`) of the week containing `d`, as a Date. */
+function firstDayOfWeek(d, mondayFirst = false) {
+  const back = mondayFirst ? (d.getDay() + 6) % 7 : d.getDay();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - back);
+}
+
+/** The first day of the week containing `d`, as "YYYY-MM-DD". */
+export function weekStart(d, mondayFirst = false) {
+  return isoDate(firstDayOfWeek(d, mondayFirst));
 }
 
 /**
- * This week and next week, Sunday to Saturday:
+ * This week and next week, Sunday to Saturday (or Monday to Sunday):
  * [{ label, days: [{ iso, weekday: 'Sun', day: 9, month: 'Nov', today }] }, …]
  */
-export function planWeeks(now = new Date()) {
+export function planWeeks(now = new Date(), mondayFirst = false) {
   const todayIso = isoDate(now);
-  const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+  const first = firstDayOfWeek(now, mondayFirst);
   return ['This week', 'Next week'].map((label, w) => ({
     label,
     days: Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + w * 7 + i);
+      const d = new Date(first.getFullYear(), first.getMonth(), first.getDate() + w * 7 + i);
       return {
         iso: isoDate(d),
         weekday: d.toLocaleDateString('en-US', { weekday: 'short' }),
@@ -396,8 +402,8 @@ export function planWeeks(now = new Date()) {
 }
 
 /** Drop plan entries from before this week, so old weeks don't pile up. */
-export function prunePlan(plan, now = new Date()) {
-  const start = weekStart(now);
+export function prunePlan(plan, now = new Date(), mondayFirst = false) {
+  const start = weekStart(now, mondayFirst);
   const kept = {};
   for (const [iso, text] of Object.entries(plan || {})) {
     if (iso >= start && typeof text === 'string' && text.trim()) kept[iso] = text;

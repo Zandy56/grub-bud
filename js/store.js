@@ -18,7 +18,7 @@ function freshState() {
     prices: {}, // key -> { store -> { price, date } }
     week: emptyWeek(),
     plan: {}, // 'YYYY-MM-DD' -> what's for dinner that day
-    settings: { pantryEnabled: false, showPrices: true, stores: [], currentStore: '', hideChecked: false },
+    settings: { pantryEnabled: false, showPrices: true, stores: [], currentStore: '', hideChecked: false, weekStartsMonday: false },
   };
   return state;
 }
@@ -38,7 +38,7 @@ function normalize(raw) {
   s.staples = raw.staples || base.staples;
   s.pantry = raw.pantry || [];
   s.prices = raw.prices || {};
-  s.plan = prunePlan(raw.plan);
+  s.plan = prunePlan(raw.plan, new Date(), s.settings.weekStartsMonday);
 
   // v1 → v2: sample recipes gain "uses it all" flags. Her own recipes are untouched.
   if ((raw.version || 1) < 2) {
