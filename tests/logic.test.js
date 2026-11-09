@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ingredientKey, cleanName, guessSection, buildList, isChecked,
-  suggestRecipes, parsePrice, cheapest, estimateTotals,
+  suggestRecipes, parsePrice, cheapest, estimateTotals, planWeeks, prunePlan,
 } from '../js/logic.js';
 
 test('ingredient keys match plural, case and prep variations', () => {
@@ -229,4 +229,24 @@ test('price counts and which stores show in the estimate', () => {
   assert.deepEqual(storesForEstimate(items, s.prices, s.settings.stores, 'Target'), ['Aldi', 'Jewel', 'Target']);
   assert.deepEqual(storesForEstimate([{ key: 'gravy' }], s.prices, s.settings.stores, ''), ['Jewel']);
   assert.deepEqual(storesForEstimate([], s.prices, s.settings.stores, ''), []);
+});
+
+test('meal plan shows this week and next, Sunday to Saturday', () => {
+  const weeks = planWeeks(new Date(2026, 10, 11, 9)); // Wed Nov 11 2026
+  assert.equal(weeks.length, 2);
+  assert.deepEqual(weeks[0].days.map((d) => d.iso), [
+    '2026-11-08', '2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14']);
+  assert.equal(weeks[0].days[0].weekday, 'Sun');
+  assert.ok(weeks[0].days[3].today);
+  assert.equal(weeks[1].days[6].iso, '2026-11-21');
+  // Crosses a month and year boundary
+  const dec = planWeeks(new Date(2026, 11, 31));
+  assert.equal(dec[0].days[0].iso, '2026-12-27');
+  assert.equal(dec[1].days[6].iso, '2027-01-09');
+});
+
+test('old plan days are dropped, this week and later are kept', () => {
+  const kept = prunePlan({ '2026-11-07': 'old', '2026-11-08': 'Tacos', '2026-11-20': 'Soup', '2026-11-09': '  ' },
+    new Date(2026, 10, 11));
+  assert.deepEqual(kept, { '2026-11-08': 'Tacos', '2026-11-20': 'Soup' });
 });

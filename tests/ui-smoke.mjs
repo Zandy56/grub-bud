@@ -251,6 +251,25 @@ click($('[data-tab="week"]'));
 click($('[data-action="new-week"]'));
 check(items().length === 0 && $('#week-badge').hidden, 'new week clears the list');
 
+// 12b. Meal plan
+click($('[data-tab="plan"]'));
+check($('#title').textContent === 'Meal Plan', 'switches to Meal Plan');
+check($$('.plan-input').length === 14, `plan shows 14 days (${$$('.plan-input').length})`);
+check($$('.plan-day.today').length === 1, 'today is highlighted');
+const typeIn = (el, value) => { el.value = value; el.dispatchEvent(new window.Event('input', { bubbles: true })); };
+const firstDay = $$('.plan-input')[0];
+typeIn(firstDay, 'Beef tacos');
+typeIn($$('.plan-input')[13], 'Soup leftovers');
+check(document.activeElement !== null && $$('.plan-input')[0] === firstDay, 'typing does not redraw the page (keyboard stays up)');
+const savedPlan = JSON.parse(window.localStorage.getItem('meal-planner:v1')).plan;
+check(savedPlan[firstDay.dataset.date] === 'Beef tacos' && Object.keys(savedPlan).length === 2, 'plan saved as she types');
+typeIn($$('.plan-input')[13], '');
+check(Object.keys(JSON.parse(window.localStorage.getItem('meal-planner:v1')).plan).length === 1, 'clearing a day removes it');
+click($('[data-tab="recipes"]'));
+click($('[data-tab="plan"]'));
+check($$('.plan-input')[0].value === 'Beef tacos', 'plan is still there after switching tabs');
+check($$('#meal-names option').some((o) => o.value === 'Beef Tacos'), 'recipe names are suggested');
+
 // 13. Older saved data: sample recipes pick up "uses all" flags, her own recipes don't change
 const store = await import(pathToFileURL(path.join(root, 'js/store.js')).href);
 store.importJSON(JSON.stringify({
@@ -264,6 +283,7 @@ const migrated = store.get().recipes;
 check(migrated[0].ingredients[0].usesAll === true && !migrated[0].ingredients[1].usesAll, 'old sample recipe gets the flag');
 check(!migrated[1].ingredients[0].usesAll, 'her own recipe is left alone');
 check(store.get().version === 2, 'saved data upgraded to version 2');
+check(JSON.stringify(store.get().plan) === '{}', 'older backups without a plan get an empty one');
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASSED');
 process.exit(failures ? 1 : 0);

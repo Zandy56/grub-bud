@@ -360,3 +360,47 @@ export function priceCounts(prices) {
 export function storesForEstimate(items, prices, stores, currentStore) {
   return stores.filter((s) => s === currentStore || items.some((i) => prices[i.key]?.[s]));
 }
+
+// ---------- Meal plan ----------
+
+/** A local date as "2026-11-09". */
+export function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** The Sunday that starts the week containing `d`, as "YYYY-MM-DD". */
+export function weekStart(d) {
+  return isoDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay()));
+}
+
+/**
+ * This week and next week, Sunday to Saturday:
+ * [{ label, days: [{ iso, weekday: 'Sun', day: 9, month: 'Nov', today }] }, …]
+ */
+export function planWeeks(now = new Date()) {
+  const todayIso = isoDate(now);
+  const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+  return ['This week', 'Next week'].map((label, w) => ({
+    label,
+    days: Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + w * 7 + i);
+      return {
+        iso: isoDate(d),
+        weekday: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        day: d.getDate(),
+        month: d.toLocaleDateString('en-US', { month: 'short' }),
+        today: isoDate(d) === todayIso,
+      };
+    }),
+  }));
+}
+
+/** Drop plan entries from before this week, so old weeks don't pile up. */
+export function prunePlan(plan, now = new Date()) {
+  const start = weekStart(now);
+  const kept = {};
+  for (const [iso, text] of Object.entries(plan || {})) {
+    if (iso >= start && typeof text === 'string' && text.trim()) kept[iso] = text;
+  }
+  return kept;
+}

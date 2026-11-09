@@ -69,6 +69,11 @@ for (const phone of PHONES) {
   };
 
   await check('Recipes');
+  await tap('#tabbar [data-tab="plan"]');
+  await page.$eval('.plan-input', (el) => { el.value = 'A really long dinner name that goes on and on and on'; });
+  await check('Meal Plan');
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/plan-${phone.width}.png`, fullPage: true });
+  await tap('#tabbar [data-tab="recipes"]');
   await tap('.recipe-card [data-action="toggle-week"]');
   await tap('#tabbar [data-tab="week"]');
   await check('This Week');

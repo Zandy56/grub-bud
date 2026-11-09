@@ -1,5 +1,5 @@
 // App state, saved to this device's localStorage.
-import { ingredientKey, cleanName } from './logic.js';
+import { ingredientKey, cleanName, prunePlan } from './logic.js';
 import { SAMPLE_RECIPES } from './samples.js';
 
 const STORAGE_KEY = 'meal-planner:v1';
@@ -17,6 +17,7 @@ function freshState() {
     pantry: [],
     prices: {}, // key -> { store -> { price, date } }
     week: emptyWeek(),
+    plan: {}, // 'YYYY-MM-DD' -> what's for dinner that day
     settings: { pantryEnabled: false, showPrices: true, stores: [], currentStore: '', hideChecked: false },
   };
   return state;
@@ -37,6 +38,7 @@ function normalize(raw) {
   s.staples = raw.staples || base.staples;
   s.pantry = raw.pantry || [];
   s.prices = raw.prices || {};
+  s.plan = prunePlan(raw.plan);
 
   // v1 → v2: sample recipes gain "uses it all" flags. Her own recipes are untouched.
   if ((raw.version || 1) < 2) {
@@ -83,6 +85,15 @@ export function save() {
     alert('Could not save your changes. The phone may be out of storage space.');
   }
   listeners.forEach((fn) => fn(state));
+}
+
+/** Save without redrawing (used while she's typing in the meal plan). */
+export function persist() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (err) {
+    console.error('Could not save', err);
+  }
 }
 
 export function subscribe(fn) {

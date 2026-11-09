@@ -2,7 +2,7 @@ import * as store from './store.js';
 import {
   buildList, isChecked, suggestRecipes, ingredientKey, cleanName, guessSection, SECTIONS,
   parsePrice, formatPrice, cheapest, estimateTotals, parseIngredientList,
-  findStore, addStore, removeStore, renameStore, priceCounts, storesForEstimate,
+  findStore, addStore, removeStore, renameStore, priceCounts, storesForEstimate, planWeeks,
 } from './logic.js';
 
 // ---------- Small helpers ----------
@@ -47,7 +47,7 @@ function ensureName(s, key, name) {
 
 // ---------- Tabs ----------
 
-const TITLES = { recipes: 'Recipes', week: 'This Week', else: 'What Else?', pantry: 'Pantry' };
+const TITLES = { recipes: 'Recipes', plan: 'Meal Plan', week: 'This Week', else: 'What Else?', pantry: 'Pantry' };
 let tab = 'recipes';
 let query = '';
 try { tab = localStorage.getItem('meal-planner:tab') || 'recipes'; } catch { /* private mode */ }
@@ -59,7 +59,7 @@ function setTab(next) {
   window.scrollTo(0, 0);
 }
 
-const VIEWS = { recipes: recipesView, week: weekView, else: elseView, pantry: pantryView };
+const VIEWS = { recipes: recipesView, plan: planView, week: weekView, else: elseView, pantry: pantryView };
 
 function render() {
   const s = store.get();
@@ -121,6 +121,36 @@ function toggleWeek(id) {
   const adding = !s.week.recipeIds.includes(id);
   store.update((st) => store.toggleIn(st.week.recipeIds, id));
   toast(adding ? `Added ${recipe.name} to this week` : `Removed ${recipe.name}`);
+}
+
+// ---------- Plan tab ----------
+
+function planView(s) {
+  const names = [...new Set([...plannedMeals(s), ...s.recipes].map((r) => r.name)), 'Leftovers', 'Eating out'];
+  return `
+    <datalist id="meal-names">${names.map((n) => `<option value="${esc(n)}">`).join('')}</datalist>
+    ${planWeeks().map((week) => `
+      <div class="section-title"><span>${week.label}</span>
+        <span class="plan-range">${week.days[0].month} ${week.days[0].day} – ${week.days[6].month} ${week.days[6].day}</span></div>
+      <div class="card plan-week">
+        ${week.days.map((d) => `
+          <label class="plan-day${d.today ? ' today' : ''}">
+            <span class="plan-date"><b>${d.weekday}</b><span>${d.day}</span></span>
+            <input class="plan-input" data-date="${d.iso}" value="${esc(s.plan[d.iso] || '')}"
+              list="meal-names" placeholder="${d.today ? 'What’s for dinner?' : ''}" autocomplete="off" enterkeyhint="next"
+              aria-label="${d.weekday} ${d.month} ${d.day}">
+          </label>`).join('')}
+      </div>`).join('')}
+    <p class="hint" style="margin:10px 4px 0">Type anything: a recipe, “Soup leftovers”, “Pizza night”. It saves as you type.
+      Past weeks clear themselves.</p>`;
+}
+
+function savePlanDay(input) {
+  const s = store.get();
+  const text = input.value;
+  if (text.trim()) s.plan[input.dataset.date] = text;
+  else delete s.plan[input.dataset.date];
+  store.persist();
 }
 
 // ---------- This Week tab ----------
@@ -956,6 +986,10 @@ document.addEventListener('change', (e) => {
 });
 
 document.addEventListener('input', (e) => {
+  if (e.target.classList.contains('plan-input')) {
+    savePlanDay(e.target);
+    return;
+  }
   if (e.target.id === 'recipe-search') {
     query = e.target.value;
     $('#recipe-results').innerHTML = recipeCards(store.get());
@@ -963,6 +997,14 @@ document.addEventListener('input', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.classList?.contains('plan-input')) {
+    e.preventDefault();
+    const inputs = $$('.plan-input');
+    const next = inputs[inputs.indexOf(e.target) + 1];
+    if (next) next.focus();
+    else e.target.blur();
+    return;
+  }
   if (e.key === 'Enter' && e.target.classList?.contains('ing-name')) {
     e.preventDefault();
     addIngRow(e.target.closest('.ing-row'));
