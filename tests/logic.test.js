@@ -289,3 +289,11 @@ test('old plan days are dropped, this week and later are kept', () => {
     new Date(2026, 10, 11));
   assert.deepEqual(kept, { '2026-11-08': 'Tacos', '2026-11-20': 'Soup' });
 });
+
+test('the app version matches the service worker version', async () => {
+  const fs = await import('node:fs');
+  const { VERSION } = await import('../js/version.js');
+  const sw = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  assert.equal(sw.match(/VERSION = '([^']+)'/)[1], VERSION, 'bump VERSION in both sw.js and js/version.js');
+  assert.ok(sw.includes("'js/version.js'"), 'sw.js keeps js/version.js for offline use');
+});

@@ -1,4 +1,5 @@
 import * as store from './store.js';
+import { VERSION } from './version.js';
 import {
   buildList, isChecked, suggestRecipes, ingredientKey, cleanName, guessSection, SECTIONS,
   parsePrice, formatPrice, cheapest, estimateTotals, parseIngredientList,
@@ -787,7 +788,11 @@ function openSettings() {
 
         <span class="label">Start over</span>
         <button class="btn block danger" data-action="reset-all">Erase everything</button>
-        <p class="hint" style="text-align:center; margin-top:24px">Grub Bud · made with love</p>`;
+        <span class="label">App version</span>
+        <p class="hint" style="margin:0 0 10px">This phone has Grub Bud <b id="app-version">${VERSION}</b>.
+          New versions load by themselves when the app opens with a signal; this button checks right now.</p>
+        <button class="btn block" data-action="update-app">Get latest version</button>
+        <p class="hint" style="text-align:center; margin-top:24px">Grub Bud ${VERSION} · made with love</p>`;
     },
   });
 }
@@ -942,6 +947,7 @@ const actions = {
       s.week.recipeIds = s.week.recipeIds.filter((id) => !ids.has(id));
     });
   },
+  'update-app': () => updateApp(),
   'reset-all': () => {
     if (!confirm('Erase ALL recipes, lists, prices and settings on this phone?')) return;
     if (!confirm('Are you sure? This can’t be undone unless you have a backup.')) return;
@@ -1065,4 +1071,55 @@ render();
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Offline mode unavailable', err));
+  keepUpToDate();
+}
+
+// ---------- Updates ----------
+
+// A phone often brings the app back from the background instead of starting it
+// fresh, so it can keep running an old version for days. Each time the app comes
+// back on screen, ask for a new version; when one has installed, reload into it,
+// but never in the middle of an edit (then wait until the app is put away).
+let updateRequested = false; // set by "Get latest version": reload as soon as it's in
+
+function keepUpToDate() {
+  const sw = navigator.serviceWorker;
+  let hadController = !!sw.controller;
+  let reloadPending = false;
+  const busy = () => !!sheet || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
+  // Reload only once the new version has taken over, so the page that loads is
+  // already the new one (reloading any earlier can mean a second reload).
+  sw.addEventListener('controllerchange', () => {
+    if (!hadController) { hadController = true; return; } // first install, nothing to reload
+    if (updateRequested || !busy()) location.reload();
+    else reloadPending = true;
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && reloadPending) location.reload();
+    if (document.visibilityState === 'visible') sw.getRegistration().then((reg) => reg?.update()).catch(() => {});
+  });
+}
+
+/** Settings > Get latest version: compare with the server and reload if newer. */
+async function updateApp() {
+  let latest;
+  try {
+    const res = await fetch(`sw.js?check=${Date.now()}`, { cache: 'no-store' });
+    latest = (await res.text()).match(/VERSION = '([^']+)'/)?.[1];
+  } catch { /* offline */ }
+  if (!latest) {
+    toast('No internet right now. Try again with a signal.');
+    return;
+  }
+  if (latest === VERSION) {
+    toast(`You have the latest version (${VERSION})`);
+    return;
+  }
+  toast(`Updating to ${latest}…`);
+  // The new version reloads the page as it takes over (see keepUpToDate). If that
+  // doesn't happen (no offline support in this browser), a plain reload still
+  // fetches the new files.
+  updateRequested = true;
+  setTimeout(() => location.reload(), 5000);
+  try { await (await navigator.serviceWorker?.getRegistration())?.update(); } catch { location.reload(); }
 }

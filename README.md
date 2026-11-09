@@ -37,7 +37,7 @@ It works offline after the first visit.
 
 ## Publishing changes
 
-The site is served by GitHub Pages from the `main` branch. Pushing to `main` updates it for everyone within a minute or two. Phones get the new version the next time the app is opened with a signal. Run all three test commands before pushing, and bump `VERSION` in `sw.js`.
+The site is served by GitHub Pages from the `main` branch. Pushing to `main` updates it for everyone within a minute or two. Phones get the new version the next time the app is opened with a signal. Run all four test commands before pushing (`npm test`, `npm run test:ui`, `npm run test:phone`, `npm run test:update`), and bump `VERSION` in both `sw.js` and `js/version.js` (a test checks they match). The app reloads itself into a new version when it comes back on screen, and Settings shows the version with a "Get latest version" button.
 
 ## Development
 
@@ -56,4 +56,4 @@ Files:
 - `js/store.js`: saved state, backup/restore
 - `js/app.js`: screens and interactions
 - `js/samples.js`: starter recipes (removable in Settings)
-- `sw.js`: offline support. **Bump `VERSION` when you change app files.**
+- `sw.js`: offline support. **Bump `VERSION` when you change app files**, together with `js/version.js`.

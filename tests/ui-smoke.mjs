@@ -166,6 +166,8 @@ check(totals.length === 3 && totals[2].includes('Target'), `Target joins the est
 // Settings: rename and remove stores
 click($('[data-action="open-settings"]'));
 await tick();
+const { VERSION: appVersion } = await import(pathToFileURL(path.join(root, 'js/version.js')).href);
+check(text($('#app-version')) === appVersion && !!$('[data-action="update-app"]'), `Settings shows the version (${text($('#app-version'))}) and a Get latest version button`);
 check($$('.store-row').map(text).join(' | ').includes('jewel1 price'), `store rows show price counts: ${$$('.store-row').map(text).join(' | ')}`);
 def('prompt', () => 'Jewel');
 click($('[data-action="rename-store"][data-value="jewel"]'));

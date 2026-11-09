@@ -1,8 +1,8 @@
 // Offline support: keep a copy of the app so it opens in the store with no signal.
 // Bump VERSION whenever app files change so phones pick up the update.
-const VERSION = 'v14';
+const VERSION = 'v15'; // same as js/version.js (a test checks)
 const FILES = [
-  './', 'index.html', 'css/styles.css', 'js/app.js', 'js/store.js', 'js/logic.js', 'js/samples.js',
+  './', 'index.html', 'css/styles.css', 'js/app.js', 'js/store.js', 'js/logic.js', 'js/samples.js', 'js/version.js',
   'manifest.webmanifest', 'assets/icon.svg', 'assets/icon-180.png', 'assets/icon-192.png', 'assets/icon-512.png',
 ];
 
