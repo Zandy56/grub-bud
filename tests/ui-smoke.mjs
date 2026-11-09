@@ -77,34 +77,66 @@ $('#add-item-form').dispatchEvent(new window.Event('submit', { bubbles: true, ca
 check(item('Paper towels') && text(item('Paper towels')).includes('Added by you'), 'manual item added');
 check(window.document.activeElement?.id === 'add-item', 'keyboard stays on the add field');
 
-// 5b. A staple added by hand is its own row to buy; the staple row stays as it was
-const oilRows = () => items().filter((i) => text(i.querySelector('.iname')) === 'Vegetable oil');
-check(oilRows().length === 1 && oilRows()[0].classList.contains('done'), 'vegetable oil is on the list once, as a staple you have');
-$('#add-item').value = 'Vegetable oil';
-$('#add-item-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
-const boughtOil = () => oilRows().find((r) => !r.classList.contains('done') || text(r).includes('Added by you'));
-const stapleOil = () => oilRows().find((r) => r !== boughtOil());
-check(oilRows().length === 2, `adding a staple by hand gives it its own row (${oilRows().length})`);
-check(boughtOil() && !boughtOil().classList.contains('done') && text(boughtOil()).includes('Added by you'), 'the added one is to buy, marked Added by you');
-check(boughtOil() && !/\d|Fajitas|Stir Fry/.test(text(boughtOil().querySelector('.uses'))), 'the added one has no amount or recipe');
-check(!text(boughtOil().closest('.list-group').querySelector('.group-name')).startsWith('Checked off'), 'the added one sits in its store section, not Checked off');
-check(stapleOil() && stapleOil().classList.contains('done') && /Stir Fry|Fajitas/.test(text(stapleOil())), 'the staple row keeps its recipes and stays checked');
-click(boughtOil().querySelector('.check'));
-check(oilRows().every((r) => r.classList.contains('done')) && oilRows().length === 2, 'checking the added one checks only it');
-const savedWeek = JSON.parse(window.localStorage.getItem('meal-planner:v1')).week;
-check(savedWeek.checked.includes('vegetable oil') && !savedWeek.stapleNeeds.includes('vegetable oil'), 'its check is saved apart from the staple');
-click(oilRows().find((r) => text(r).includes('Added by you')).querySelector('.check'));
-$('#add-item').value = 'Vegetable oil';
-$('#add-item-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
-check(oilRows().length === 2, 'adding it a second time does not add a third row');
-click(boughtOil().querySelector('.body'));
-check(!$('#item-staple') && text($('#sheet-root')).includes('staple you added'), 'its sheet explains it instead of offering the staple switch');
-click($('[data-action="remove-extra"]'));
-await tick(); // the sheet closes through history.back()
-check(oilRows().length === 1 && oilRows()[0].classList.contains('done') && JSON.parse(window.localStorage.getItem('meal-planner:v1')).staples.includes('vegetable oil'), 'removing it leaves the staple as it was');
-$('#add-item').value = 'Bell peppers';
-$('#add-item-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
-check(items().filter((i) => text(i.querySelector('.iname')) === 'Bell peppers').length === 1, 'an ordinary item already on the list is still not added twice');
+// 5b. Items added by hand are their own rows: no recipe amounts, not staples, checked on their own
+const rowsNamed = (name) => items().filter((i) => text(i.querySelector('.iname')) === name);
+const addedRow = (name) => rowsNamed(name).find((r) => text(r).includes('Added by you'));
+const recipeRow = (name) => rowsNamed(name).find((r) => !text(r).includes('Added by you'));
+const addByHand = (name) => {
+  $('#add-item').value = name;
+  $('#add-item-form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+};
+const groupName = (row) => text(row.closest('.list-group').querySelector('.group-name'));
+const savedState = () => JSON.parse(window.localStorage.getItem('meal-planner:v1'));
+
+// A staple ("always on hand") that a recipe uses.
+check(rowsNamed('Vegetable oil').length === 1 && rowsNamed('Vegetable oil')[0].classList.contains('done'), 'vegetable oil is on the list once, as a staple you have');
+addByHand('Vegetable oil');
+check(rowsNamed('Vegetable oil').length === 2, `adding a staple by hand gives it its own row (${rowsNamed('Vegetable oil').length})`);
+check(addedRow('Vegetable oil') && !addedRow('Vegetable oil').classList.contains('done'), 'the added staple is to buy');
+check(text(addedRow('Vegetable oil').querySelector('.uses')) === 'Added by you', 'the added staple has no amount or recipe');
+check(!groupName(addedRow('Vegetable oil')).startsWith('Checked off'), 'it sits in its store section');
+check(recipeRow('Vegetable oil')?.classList.contains('done') && /Stir Fry/.test(text(recipeRow('Vegetable oil'))), 'the staple row keeps its recipe amount and stays on hand');
+
+// An ordinary ingredient that a recipe uses.
+check(rowsNamed('Bell peppers').length === 1, 'bell peppers are on the list once, from the recipes');
+addByHand('Bell peppers');
+check(rowsNamed('Bell peppers').length === 2, `adding an ingredient a recipe uses gives it its own row (${rowsNamed('Bell peppers').length})`);
+check(text(addedRow('Bell peppers').querySelector('.uses')) === 'Added by you', 'the added row has no amounts or recipes');
+check(/Stir Fry|Fajitas/.test(text(recipeRow('Bell peppers'))) && /\d/.test(text(recipeRow('Bell peppers').querySelector('.uses'))), 'the recipe row keeps its amounts');
+
+// Checks are separate.
+const pepperRecipeWasDone = recipeRow('Bell peppers').classList.contains('done');
+click(addedRow('Bell peppers').querySelector('.check'));
+check(addedRow('Bell peppers').classList.contains('done') && recipeRow('Bell peppers').classList.contains('done') === pepperRecipeWasDone, 'checking the added row leaves the recipe row as it was');
+check(savedState().week.checked.includes('extra:bell pepper'), 'its check is saved under its own id');
+click(addedRow('Bell peppers').querySelector('.check'));
+click(recipeRow('Bell peppers').querySelector('.check'));
+check(recipeRow('Bell peppers').classList.contains('done') !== pepperRecipeWasDone && !addedRow('Bell peppers').classList.contains('done'), 'checking the recipe row leaves the added row as it was');
+click(recipeRow('Bell peppers').querySelector('.check'));
+click(addedRow('Vegetable oil').querySelector('.check'));
+check(savedState().week.checked.includes('extra:vegetable oil') && !savedState().week.stapleNeeds.includes('vegetable oil'), 'checking an added staple doesn’t touch the staple');
+click(addedRow('Vegetable oil').querySelector('.check'));
+
+// No duplicates of the added row; no staple switch on it.
+addByHand('Bell peppers');
+check(rowsNamed('Bell peppers').length === 2, 'adding it again by hand doesn’t add a third row');
+click(addedRow('Vegetable oil').querySelector('.body'));
+check(!$('#item-staple') && text($('#sheet-root')).includes('added this to the list yourself'), 'its sheet explains it instead of offering the staple switch');
+click($('[data-action="close-sheet"]'));
+await tick();
+click(recipeRow('Bell peppers').querySelector('.body'));
+check(!!$('#item-staple'), 'a recipe row still has the staple switch');
+click($('[data-action="close-sheet"]'));
+await tick();
+
+// Removing the added rows leaves everything else as it was.
+for (const name of ['Vegetable oil', 'Bell peppers']) {
+  click(addedRow(name).querySelector('.body'));
+  click($('[data-action="remove-extra"]'));
+  await tick(); // the sheet closes through history.back()
+}
+check(rowsNamed('Vegetable oil').length === 1 && rowsNamed('Vegetable oil')[0].classList.contains('done') && savedState().staples.includes('vegetable oil'), 'removing the added staple leaves the staple as it was');
+check(rowsNamed('Bell peppers').length === 1 && rowsNamed('Bell peppers')[0].classList.contains('done') === pepperRecipeWasDone, 'removing the added peppers leaves the recipe row as it was');
 
 // 6. Prices: no stores to start; stores get added from the price screen
 const settingsNow = () => JSON.parse(window.localStorage.getItem('meal-planner:v1') || '{"settings":{}}').settings;
@@ -356,7 +388,16 @@ store.importJSON(JSON.stringify({
 const migrated = store.get().recipes;
 check(migrated[0].ingredients[0].usesAll === true && !migrated[0].ingredients[1].usesAll, 'old sample recipe gets the flag');
 check(!migrated[1].ingredients[0].usesAll, 'a user-made recipe is left alone');
-check(store.get().version === 2, 'saved data upgraded to version 2');
+check(store.get().version === 3, 'saved data upgraded to version 3');
+// v2 → v3: an item added by hand that was checked stays checked on its own row.
+store.importJSON(JSON.stringify({
+  version: 2,
+  recipes: [],
+  week: { recipeIds: [], checked: ['paper towel'], extras: [{ key: 'paper towel', name: 'Paper towels' }, { key: 'foil', name: 'Foil' }], stapleNeeds: [] },
+}));
+check(store.get().week.checked.includes('extra:paper towel') && !store.get().week.checked.includes('extra:foil'), 'checked items added by hand stay checked after the upgrade');
+store.importJSON(JSON.stringify(store.get()));
+check(store.get().week.checked.filter((k) => k === 'extra:paper towel').length === 1, 'the upgrade runs once');
 check(JSON.stringify(store.get().plan) === '{}', 'older backups without a plan get an empty one');
 check(JSON.stringify(store.get().lunch) === '{}', 'older backups without lunches get an empty lunch plan');
 store.importJSON(JSON.stringify({ recipes: [], plan: { '2099-01-01': 'Tacos' } }));

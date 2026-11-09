@@ -79,29 +79,52 @@ test('buildList respects custom section and name overrides', () => {
   assert.equal(rice.section, 'Other');
 });
 
-test('a staple added by hand is its own row to buy, with no amounts or recipes', () => {
+test('items added by hand are their own rows: no recipe amounts, not staples, checked on their own', () => {
   const recs = [{ id: 'p', name: 'Pasta', ingredients: [{ amount: '2 tbsp', name: 'Olive oil' }, { amount: '1 lb', name: 'Spaghetti' }] }];
-  const week = { recipeIds: ['p'], checked: [], extras: [{ key: 'olive oil', name: 'Olive oil' }, { key: 'salt', name: 'Salt' }], stapleNeeds: [] };
+  const week = {
+    recipeIds: ['p'], checked: [], stapleNeeds: [],
+    extras: [{ key: 'olive oil', name: 'Olive oil' }, { key: 'salt', name: 'Salt' }, { key: 'spaghetti', name: 'Spaghetti' }, { key: 'paper towel', name: 'Paper towels' }],
+  };
   const list = buildList({ recipes: recs, week, staples: ['olive oil', 'salt'] });
-  const oils = list.filter((i) => i.key === 'olive oil');
-  assert.equal(oils.length, 2);
-  const staple = oils.find((i) => i.staple);
-  const toBuy = oils.find((i) => !i.staple);
-  assert.equal(staple.id, 'olive oil');
-  assert.equal(staple.uses.length, 1);
-  assert.equal(staple.extra, false);
-  assert.equal(toBuy.id, 'extra:olive oil');
-  assert.deepEqual(toBuy.uses, []);
-  assert.equal(toBuy.extra, true);
-  assert.equal(isChecked(staple, { week }), true, 'the staple still counts as on hand');
-  assert.equal(isChecked(toBuy, { week }), false, 'the added one is still to buy');
-  assert.equal(isChecked(toBuy, { week: { ...week, checked: ['olive oil'] } }), true);
-  // A staple no meal uses, added by hand: one row, to buy.
-  const salt = list.filter((i) => i.key === 'salt');
-  assert.equal(salt.length, 1);
-  assert.equal(salt[0].staple, false);
-  assert.equal(isChecked(salt[0], { week }), false);
-  // Ordinary items still merge, and every row id is unique.
+  const rows = (key) => list.filter((i) => i.key === key);
+
+  // A staple a recipe uses: the staple row keeps its amounts, the added row has none.
+  const [oilStaple, oilAdded] = [rows('olive oil').find((i) => !i.extra), rows('olive oil').find((i) => i.extra)];
+  assert.equal(rows('olive oil').length, 2);
+  assert.equal(oilStaple.id, 'olive oil');
+  assert.equal(oilStaple.staple, true);
+  assert.equal(oilStaple.uses[0].amount, '2 tbsp');
+  assert.equal(oilAdded.id, 'extra:olive oil');
+  assert.equal(oilAdded.staple, false);
+  assert.deepEqual(oilAdded.uses, []);
+  assert.equal(isChecked(oilStaple, { week }), true, 'the staple still counts as on hand');
+  assert.equal(isChecked(oilAdded, { week }), false, 'the added one is to buy');
+
+  // An ordinary ingredient a recipe uses: two rows too, the added one without amounts.
+  const [spagRecipe, spagAdded] = [rows('spaghetti').find((i) => !i.extra), rows('spaghetti').find((i) => i.extra)];
+  assert.equal(rows('spaghetti').length, 2);
+  assert.equal(spagRecipe.uses[0].amount, '1 lb');
+  assert.equal(spagRecipe.extra, false);
+  assert.deepEqual(spagAdded.uses, []);
+
+  // Checks are separate: checking the recipe row doesn't check the added row, and back.
+  const recipeChecked = { ...week, checked: ['spaghetti'] };
+  assert.equal(isChecked(spagRecipe, { week: recipeChecked }), true);
+  assert.equal(isChecked(spagAdded, { week: recipeChecked }), false);
+  const addedChecked = { ...week, checked: ['extra:spaghetti'] };
+  assert.equal(isChecked(spagRecipe, { week: addedChecked }), false);
+  assert.equal(isChecked(spagAdded, { week: addedChecked }), true);
+  // Pantry mode doesn't touch added rows: they're checked for this week only.
+  assert.equal(isChecked(spagAdded, { week, pantry: ['spaghetti'], pantryEnabled: true }), false);
+  assert.equal(isChecked(spagAdded, { week: addedChecked, pantry: [], pantryEnabled: true }), true);
+
+  // A staple no recipe uses, added by hand: one row, to buy.
+  assert.equal(rows('salt').length, 1);
+  assert.equal(rows('salt')[0].staple, false);
+  assert.equal(isChecked(rows('salt')[0], { week }), false);
+  assert.equal(rows('paper towel').length, 1);
+
+  // Every row id is unique.
   assert.equal(new Set(list.map((i) => i.id)).size, list.length);
 });
 

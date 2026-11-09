@@ -110,7 +110,7 @@ export function buildList({ recipes, week, ingredients = {}, staples = [] }) {
   const newItem = (key, rawName) => {
     const meta = ingredients[key] || {};
     return {
-      id: key, // unique per row; the same as key except for a staple added by hand (below)
+      id: key, // unique per row; the same as key except for items added by hand (below)
       key,
       name: meta.name || cleanName(rawName),
       section: meta.section || guessSection(key),
@@ -124,9 +124,11 @@ export function buildList({ recipes, week, ingredients = {}, staples = [] }) {
     if (!byKey.has(key)) byKey.set(key, newItem(key, rawName));
     return byKey.get(key);
   };
-  // A staple added by hand means "we're out, buy some": its own row, to buy like
-  // any other item, with no amounts or recipes, separate from the staple's row.
-  const boughtStaples = [];
+  // Items added by hand ("we're out of oil", "paper towels") are always their own
+  // rows: to buy, with no recipe amounts, never treated as staples ("always on
+  // hand"), and checked off on their own. A recipe that uses the same thing keeps
+  // its own row.
+  const added = [];
 
   for (const recipe of chosen) {
     for (const ing of recipe.ingredients) {
@@ -138,23 +140,25 @@ export function buildList({ recipes, week, ingredients = {}, staples = [] }) {
     }
   }
   for (const extra of week.extras || []) {
-    if (stapleSet.has(extra.key)) {
-      boughtStaples.push({ ...newItem(extra.key, extra.name), id: `extra:${extra.key}`, staple: false, extra: true, stapleCopy: true });
-      continue;
-    }
-    const item = touch(extra.key, extra.name);
-    item.extra = true;
+    added.push({ ...newItem(extra.key, extra.name), id: extraId(extra.key), staple: false, extra: true });
   }
 
-  return [...byKey.values(), ...boughtStaples].sort(
+  return [...byKey.values(), ...added].sort(
     (a, b) =>
       SECTIONS.indexOf(a.section) - SECTIONS.indexOf(b.section) ||
       a.name.localeCompare(b.name),
   );
 }
 
-/** Is a list item checked off? Staples count as checked unless the user marked one as needed. */
+/** The list row id of an item added by hand (its check is saved under this id). */
+export const extraId = (key) => `extra:${key}`;
+
+/**
+ * Is a list item checked off? Items added by hand are checked on their own, just
+ * for this week. Staples count as checked unless the user marked one as needed.
+ */
 export function isChecked(item, { week, pantry = [], pantryEnabled = false }) {
+  if (item.extra) return (week.checked || []).includes(item.id);
   if (item.staple) return !(week.stapleNeeds || []).includes(item.key);
   if (pantryEnabled) return pantry.includes(item.key);
   return (week.checked || []).includes(item.key);

@@ -12,11 +12,11 @@ Everyone who opens that link gets their own separate copy. Recipes, lists and pr
 
 - **Recipes**: save recipes with ingredients and notes. Tap **+ Add** to put a meal on this week's list. Ingredient lists can be pasted in one go ("Paste a list").
 - **Plan**: this week and next week, Sunday to Saturday (or Monday to Sunday, set in Settings), with a Lunch and a Dinner box for each day ("Sandwiches", "Beef tacos", "Soup leftovers"). Recipe names are suggested as you type. It saves as you type, and past weeks clear themselves.
-- **This Week**: one shopping list built from every chosen meal, with duplicates merged ("Bell peppers: 2 (Stir Fry), 3 (Fajitas)") and grouped by store section. Tap the circle to check an item off; checked items move to a "Checked off" group at the bottom (tap again to put one back). You can add one-off items too (paper towels).
+- **This Week**: one shopping list built from every chosen meal, with duplicates merged ("Bell peppers: 2 (Stir Fry), 3 (Fajitas)") and grouped by store section. Tap the circle to check an item off; checked items move to a "Checked off" group at the bottom (tap again to put one back). You can add one-off items too (paper towels). Anything added by hand is its own row: no recipe amounts, not affected by staples, and checked off on its own, even if a recipe on the list uses the same thing.
 - **What Else?**: other saved recipes ranked by how much of them is already on the list (or in the pantry), with exactly what's still missing. In the recipe editor, tick **All** on an ingredient the recipe uses up completely (a whole tub of sour cream). When that meal is planned, the ingredient doesn't count as a leftover.
 - **Pantry** *(optional, turn on in Settings)*: things you check off stay checked from week to week.
 - **Prices** *(can be turned off in Settings)*: tap **+ $** on an item to save what it costs and where. There are no stores to begin with; typing a new store name on an item's price screen adds it. The estimate shows a total for each store that has a price for something on this week's list. Stores can be renamed or removed in Settings.
-- **Staples**: salt, oil and similar are assumed on hand and left out of recipe matching. Editable in Settings. Adding a staple to the list by hand ("we're out of oil") gives it its own row to buy, with no amounts or recipes, separate from the staple's usual row.
+- **Staples**: salt, oil and similar are assumed on hand and left out of recipe matching. Editable in Settings. When you're out of one, add it to the list by hand ("Olive oil"): it gets its own row to buy, and the staple itself doesn't change.
 
 Ingredients match by name, ignoring plurals, capitals and prep words, so "Yellow Onions, diced" matches "yellow onion".
 

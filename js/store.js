@@ -1,5 +1,5 @@
 // App state, saved to this device's localStorage.
-import { ingredientKey, cleanName, prunePlan } from './logic.js';
+import { ingredientKey, cleanName, prunePlan, extraId } from './logic.js';
 import { SAMPLE_RECIPES } from './samples.js';
 
 const STORAGE_KEY = 'meal-planner:v1';
@@ -10,7 +10,7 @@ export const DEFAULT_STAPLES = [
 
 function freshState() {
   const state = {
-    version: 2,
+    version: 3,
     recipes: SAMPLE_RECIPES.map((r) => ({ ...r, sample: true })),
     ingredients: {}, // key -> { name, section } (the user's overrides)
     staples: [...DEFAULT_STAPLES],
@@ -51,6 +51,16 @@ function normalize(raw) {
         const match = original.ingredients.find((o) => o.name === ing.name);
         if (match?.usesAll && ing.usesAll === undefined) ing.usesAll = true;
       }
+    }
+  }
+  // v2 → v3: items added by hand got their own rows, checked off under their own
+  // id. One that was checked before (sharing its ingredient's check, or pantry)
+  // stays checked.
+  if ((raw.version || 1) < 3) {
+    const was = new Set([...s.week.checked, ...(s.settings.pantryEnabled ? s.pantry : [])]);
+    for (const extra of s.week.extras) {
+      const id = extraId(extra.key);
+      if (was.has(extra.key) && !s.week.checked.includes(id)) s.week.checked.push(id);
     }
   }
   s.version = base.version;

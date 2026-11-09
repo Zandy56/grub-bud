@@ -299,7 +299,8 @@ function toggleCheck(id) {
     const item = listFor(s).find((i) => i.id === id);
     if (!item) return;
     const { key } = item;
-    if (item.staple) store.toggleIn(s.week.stapleNeeds, key);
+    if (item.extra) store.toggleIn(s.week.checked, item.id);
+    else if (item.staple) store.toggleIn(s.week.stapleNeeds, key);
     else if (s.settings.pantryEnabled) {
       store.toggleIn(s.pantry, key);
       ensureName(s, key, item.name);
@@ -619,7 +620,7 @@ function editItem(id, focus) {
         </div>
         <datalist id="store-names">${otherStores.map((st) => `<option value="${esc(st)}">`).join('')}</datalist>
         <p class="hint">The price for one of whatever you usually buy: a bag, a pack, a pound. Clear a price to remove it.</p>` : ''}
-      ${item.stapleCopy ? `<p class="hint">A staple you added to buy this week. Your staple stays on the list as “usually on hand”.</p>` : `
+      ${item.extra ? `<p class="hint">You added this to the list yourself, so it’s on its own: no recipe amounts, and it doesn’t change your “always on hand” staples.</p>` : `
       <span class="label">Settings</span>
       <div class="card">
         <label class="toggle-row"><div><strong>Always have this</strong><p>Treat it as a staple, like salt. It won’t count in “What Else?”.</p></div>
@@ -805,6 +806,7 @@ function setSetting(name, value) {
       if (value) {
         // Carry this week's checks into the pantry.
         for (const key of s.week.checked) {
+          if (key.startsWith('extra:')) continue; // items added by hand stay this-week-only
           if (!s.pantry.includes(key)) s.pantry.push(key);
           const item = listFor(s).find((i) => i.key === key);
           if (item) ensureName(s, key, item.name);
@@ -977,7 +979,7 @@ const forms = {
     const key = ingredientKey(name);
     if (!key) return;
     const s = store.get();
-    if (listFor(s).some((i) => i.key === key && !i.staple)) {
+    if (s.week.extras.some((x) => x.key === key)) {
       toast(`${name} is already on the list`);
       input.value = '';
       return;
