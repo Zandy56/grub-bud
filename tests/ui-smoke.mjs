@@ -54,12 +54,20 @@ const pepper = item('Bell peppers');
 check(pepper && text(pepper).includes('Chicken Stir Fry') && text(pepper).includes('Chicken Fajitas'), 'bell peppers merged across both meals');
 check(items().filter((i) => text(i.querySelector('.iname')) === 'Yellow onion').length === 1, 'yellow onion listed once');
 const groups = $$('.group-name').map(text);
-check(groups[0] === 'Produce' && groups.at(-1).startsWith('Staples'), `grouped by section: ${groups.join(' | ')}`);
+check(groups[0] === 'Produce' && groups.at(-1).startsWith('Checked off'), `grouped by section, checked last: ${groups.join(' | ')}`);
 check(item('Vegetable oil')?.classList.contains('done'), 'staple (vegetable oil) starts checked');
+const groupOf = (name) => text(item(name)?.closest('.list-group')?.querySelector('.group-name') || { textContent: '' });
+check(groupOf('Vegetable oil').startsWith('Checked off'), 'a staple you already have sits in Checked off');
 
 // 4. Check off
 click(item('Bell peppers').querySelector('.check'));
 check(item('Bell peppers').classList.contains('done'), 'checking an item marks it done');
+check(groupOf('Bell peppers').startsWith('Checked off'), `a checked item moves to the Checked off group (${groupOf('Bell peppers')})`);
+check($$('.group-name').map(text).at(-1).startsWith('Checked off') && $$('.list-group').at(-1).contains(item('Bell peppers')), 'Checked off is the last group on the list');
+check(groupOf('Yellow onion') === 'Produce', 'unchecked produce stays in Produce');
+click(item('Bell peppers').querySelector('.check'));
+check(groupOf('Bell peppers') === 'Produce' && !item('Bell peppers').classList.contains('done'), 'unchecking puts it back in its section');
+click(item('Bell peppers').querySelector('.check'));
 check(text($$('.section-title').find((e) => text(e).startsWith('Shopping list'))).includes('2/'), 'progress count updates');
 
 // 5. Extra item

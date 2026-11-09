@@ -221,23 +221,30 @@ function weekView(s) {
   if (!items.length) {
     listHtml = `<div class="card empty"><strong>Your list is empty</strong>Add meals from Recipes, or add a single item above.</div>`;
   } else {
-    const visible = (i) => !hideChecked || !isChecked(i, ctx);
+    // Still to get, by store section. Checked items (staples you already have
+    // included) leave their section for one "Checked off" group at the bottom.
+    const done = (i) => isChecked(i, ctx);
     const groups = [];
     for (const section of SECTIONS) {
-      const inSection = regular.filter((i) => i.section === section && visible(i));
+      const inSection = regular.filter((i) => i.section === section && !done(i));
       if (inSection.length) groups.push({ name: section, items: inSection });
     }
-    const visibleStaples = staples.filter(visible);
-    if (visibleStaples.length) groups.push({ name: 'Staples · usually on hand', items: visibleStaples });
-    const hidden = items.filter((i) => !visible(i)).length;
-    listHtml = groups.map((g) => `
-      <div class="card list-group">
+    const neededStaples = staples.filter((i) => !done(i));
+    if (neededStaples.length) groups.push({ name: 'Staples · usually on hand', items: neededStaples });
+    const checked = [
+      ...SECTIONS.flatMap((section) => regular.filter((i) => i.section === section && done(i))),
+      ...staples.filter(done),
+    ];
+    const groupHtml = (g, extra = '') => `
+      <div class="card list-group${extra}">
         <div class="group-name">${esc(g.name)}</div>
         ${g.items.map((i) => itemRow(i, s, ctx)).join('')}
-      </div>`).join('')
-      + (hidden ? `<p class="muted small" style="text-align:center">${plural(hidden, 'checked item')} hidden ·
-          <button class="link" data-action="toggle-hide-checked">Show</button></p>` : '')
-      + (!groups.length ? `<div class="card empty"><strong>All done! 🎉</strong>Everything is checked off.</div>` : '');
+      </div>`;
+    listHtml = groups.map((g) => groupHtml(g)).join('')
+      + (!groups.length ? `<div class="card empty"><strong>All done! 🎉</strong>Everything is checked off.</div>` : '')
+      + (checked.length && !hideChecked ? groupHtml({ name: `Checked off (${checked.length})`, items: checked }, ' checked-group') : '')
+      + (checked.length && hideChecked ? `<p class="muted small" style="text-align:center">${plural(checked.length, 'checked item')} hidden ·
+          <button class="link" data-action="toggle-hide-checked">Show</button></p>` : '');
   }
 
   return `
