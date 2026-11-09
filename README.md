@@ -11,7 +11,7 @@ Everyone who opens that link gets their own separate copy. Recipes, lists and pr
 ## What it does
 
 - **Recipes**: save recipes with ingredients and notes. Tap **+ Add** to put a meal on this week's list. Ingredient lists can be pasted in one go ("Paste a list").
-- **Plan**: this week and next week, Sunday to Saturday (or Monday to Sunday, set in Settings), with a text box for each day ("Beef tacos", "Soup leftovers"). Recipe names are suggested as you type. It saves as you type, and past weeks clear themselves.
+- **Plan**: this week and next week, Sunday to Saturday (or Monday to Sunday, set in Settings), with a Lunch and a Dinner box for each day ("Sandwiches", "Beef tacos", "Soup leftovers"). Recipe names are suggested as you type. It saves as you type, and past weeks clear themselves.
 - **This Week**: one shopping list built from every chosen meal, with duplicates merged ("Bell peppers: 2 (Stir Fry), 3 (Fajitas)") and grouped by store section. Tap the circle to check an item off. You can add one-off items too (paper towels).
 - **What Else?**: other saved recipes ranked by how much of them is already on the list (or in the pantry), with exactly what's still missing. In the recipe editor, tick **All** on an ingredient the recipe uses up completely (a whole tub of sour cream). When that meal is planned, the ingredient doesn't count as a leftover.
 - **Pantry** *(optional, turn on in Settings)*: things you check off stay checked from week to week.

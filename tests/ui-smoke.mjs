@@ -254,23 +254,31 @@ check(items().length === 0 && $('#week-badge').hidden, 'new week clears the list
 // 12b. Meal plan
 click($('[data-tab="plan"]'));
 check($('#title').textContent === 'Meal Plan', 'switches to Meal Plan');
-check($$('.plan-input').length === 14, `plan shows 14 days (${$$('.plan-input').length})`);
+const dinners = () => $$('.plan-input[data-meal="dinner"]');
+const lunches = () => $$('.plan-input[data-meal="lunch"]');
+check(dinners().length === 14 && lunches().length === 14, `plan shows lunch and dinner for 14 days (${lunches().length}/${dinners().length})`);
+check($$('.plan-day').every((d) => d.querySelectorAll('.plan-input').length === 2 && text(d).includes('Lunch') && text(d).includes('Dinner')), 'each day has a Lunch and a Dinner box');
 check($$('.plan-day.today').length === 1, 'today is highlighted');
 const typeIn = (el, value) => { el.value = value; el.dispatchEvent(new window.Event('input', { bubbles: true })); };
-const firstDay = $$('.plan-input')[0];
+const firstDay = dinners()[0];
 typeIn(firstDay, 'Beef tacos');
-typeIn($$('.plan-input')[13], 'Soup leftovers');
-check(document.activeElement !== null && $$('.plan-input')[0] === firstDay, 'typing does not redraw the page (keyboard stays up)');
+typeIn(dinners()[13], 'Soup leftovers');
+check(document.activeElement !== null && dinners()[0] === firstDay, 'typing does not redraw the page (keyboard stays up)');
 const savedPlan = JSON.parse(window.localStorage.getItem('meal-planner:v1')).plan;
 check(savedPlan[firstDay.dataset.date] === 'Beef tacos' && Object.keys(savedPlan).length === 2, 'plan saved as the user types');
-typeIn($$('.plan-input')[13], '');
+typeIn(lunches()[0], 'Sandwiches');
+const savedLunch = JSON.parse(window.localStorage.getItem('meal-planner:v1')).lunch;
+const savedDinner = JSON.parse(window.localStorage.getItem('meal-planner:v1')).plan;
+check(savedLunch[firstDay.dataset.date] === 'Sandwiches' && Object.keys(savedLunch).length === 1 && savedDinner[firstDay.dataset.date] === 'Beef tacos', 'lunch saves separately from dinner on the same day');
+typeIn(dinners()[13], '');
 check(Object.keys(JSON.parse(window.localStorage.getItem('meal-planner:v1')).plan).length === 1, 'clearing a day removes it');
 click($('[data-tab="recipes"]'));
 click($('[data-tab="plan"]'));
-check($$('.plan-input')[0].value === 'Beef tacos', 'plan is still there after switching tabs');
+check(dinners()[0].value === 'Beef tacos', 'plan is still there after switching tabs');
+check(lunches()[0].value === 'Sandwiches' && lunches()[1].value === '', 'lunch is still there after switching tabs');
 check($$('#meal-names option').some((o) => o.value === 'Beef Tacos'), 'recipe names are suggested');
 check(text($('.plan-date')).startsWith('Sun'), 'plan starts on Sunday by default');
-const nextSunday = $$('.plan-input')[7]; // shown whether the week starts Sunday or Monday
+const nextSunday = dinners()[7]; // shown whether the week starts Sunday or Monday
 typeIn(nextSunday, 'Pizza night');
 click($('[data-action="open-settings"]'));
 const mondayToggle = $('[data-setting="weekStartsMonday"]');
@@ -279,7 +287,7 @@ mondayToggle.dispatchEvent(new window.Event('change', { bubbles: true }));
 click($('[data-action="close-sheet"]'));
 await tick();
 check(text($('.plan-date')).startsWith('Mon') && text($$('.plan-date')[6]).startsWith('Sun'), 'Settings toggle makes the plan start on Monday');
-check($(`.plan-input[data-date="${nextSunday.dataset.date}"]`)?.value === 'Pizza night', 'entries stay on their dates after switching');
+check($(`.plan-input[data-meal="dinner"][data-date="${nextSunday.dataset.date}"]`)?.value === 'Pizza night', 'entries stay on their dates after switching');
 const store0 = () => JSON.parse(window.localStorage.getItem('meal-planner:v1'));
 click($('[data-tab="recipes"]'));
 click($('.recipe-card [data-action="toggle-week"]'));
@@ -287,11 +295,15 @@ click($('[data-tab="plan"]'));
 const listBefore = JSON.stringify(store0().week);
 check(store0().week.recipeIds.length === 1, 'a meal is on the shopping list before clearing the plan');
 click($('[data-action="clear-plan"]'));
-check($$('.plan-input').every((i) => !i.value) && JSON.stringify(store0().plan) === '{}', 'Clear meal plan empties both weeks');
+check($$('.plan-input').every((i) => !i.value) && JSON.stringify(store0().plan) === '{}' && JSON.stringify(store0().lunch) === '{}', 'Clear meal plan empties lunch and dinner for both weeks');
 check(JSON.stringify(store0().week) === listBefore, 'clearing the plan leaves the shopping list alone');
 check($('#plan-footer').hidden, 'Clear button hides when the plan is empty');
-typeIn($$('.plan-input')[2], 'Chili');
+typeIn(dinners()[2], 'Chili');
 check(!$('#plan-footer').hidden, 'Clear button appears as soon as the user types something');
+typeIn(dinners()[2], '');
+check($('#plan-footer').hidden, 'Clear button hides again when that is erased');
+typeIn(lunches()[4], 'Leftovers');
+check(!$('#plan-footer').hidden, 'a lunch alone also shows the Clear button');
 
 // 13. Older saved data: sample recipes pick up "uses all" flags, the user's own recipes don't change
 const store = await import(pathToFileURL(path.join(root, 'js/store.js')).href);
@@ -307,6 +319,9 @@ check(migrated[0].ingredients[0].usesAll === true && !migrated[0].ingredients[1]
 check(!migrated[1].ingredients[0].usesAll, 'a user-made recipe is left alone');
 check(store.get().version === 2, 'saved data upgraded to version 2');
 check(JSON.stringify(store.get().plan) === '{}', 'older backups without a plan get an empty one');
+check(JSON.stringify(store.get().lunch) === '{}', 'older backups without lunches get an empty lunch plan');
+store.importJSON(JSON.stringify({ recipes: [], plan: { '2099-01-01': 'Tacos' } }));
+check(store.get().plan['2099-01-01'] === 'Tacos' && JSON.stringify(store.get().lunch) === '{}', 'a backup from before lunches keeps its dinners');
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASSED');
 process.exit(failures ? 1 : 0);

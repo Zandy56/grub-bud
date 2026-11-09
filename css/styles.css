@@ -223,6 +223,16 @@ textarea.field { resize: vertical; min-height: 96px; }
 .plan-date { display: flex; flex-direction: column; line-height: 1.15; color: var(--muted); font-size: 13px; }
 .plan-date b { color: var(--text); font-size: 15px; }
 .plan-day.today .plan-date, .plan-day.today .plan-date b { color: var(--accent); }
+.plan-meals { display: grid; grid-template-columns: minmax(0, 1fr); }
+.plan-meal {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+}
+.plan-meal + .plan-meal { border-top: 1px dashed var(--border); }
+.plan-meal-name { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.plan-day.today .plan-meal-name { color: var(--accent); }
 .plan-input {
   width: 100%;
   min-width: 0;

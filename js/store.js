@@ -18,6 +18,7 @@ function freshState() {
     prices: {}, // key -> { store -> { price, date } }
     week: emptyWeek(),
     plan: {}, // 'YYYY-MM-DD' -> what's for dinner that day
+    lunch: {}, // 'YYYY-MM-DD' -> what's for lunch that day (older data has none)
     settings: { pantryEnabled: false, showPrices: true, stores: [], currentStore: '', hideChecked: false, weekStartsMonday: false },
   };
   return state;
@@ -39,6 +40,7 @@ function normalize(raw) {
   s.pantry = raw.pantry || [];
   s.prices = raw.prices || {};
   s.plan = prunePlan(raw.plan, new Date(), s.settings.weekStartsMonday);
+  s.lunch = prunePlan(raw.lunch, new Date(), s.settings.weekStartsMonday);
 
   // v1 → v2: sample recipes gain "uses it all" flags. The user's own recipes are untouched.
   if ((raw.version || 1) < 2) {

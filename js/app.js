@@ -125,6 +125,12 @@ function toggleWeek(id) {
 
 // ---------- Plan tab ----------
 
+// Each day has a lunch and a dinner box. Dinner lives in `plan` (as it always
+// has), lunch in `lunch`, both 'YYYY-MM-DD' -> text.
+const MEALS = [{ key: 'lunch', label: 'Lunch' }, { key: 'dinner', label: 'Dinner' }];
+const mealMap = (s, meal) => (meal === 'lunch' ? s.lunch : s.plan);
+const planHasAnything = (s) => Object.keys(s.plan).length > 0 || Object.keys(s.lunch).length > 0;
+
 function planView(s) {
   const names = [...new Set([...plannedMeals(s), ...s.recipes].map((r) => r.name)), 'Leftovers', 'Eating out'];
   return `
@@ -134,28 +140,35 @@ function planView(s) {
         <span class="plan-range">${week.days[0].month} ${week.days[0].day} – ${week.days[6].month} ${week.days[6].day}</span></div>
       <div class="card plan-week">
         ${week.days.map((d) => `
-          <label class="plan-day${d.today ? ' today' : ''}">
+          <div class="plan-day${d.today ? ' today' : ''}">
             <span class="plan-date"><b>${d.weekday}</b><span>${d.day}</span></span>
-            <input class="plan-input" data-date="${d.iso}" value="${esc(s.plan[d.iso] || '')}"
-              list="meal-names" placeholder="${d.today ? 'What’s for dinner?' : ''}" autocomplete="off" enterkeyhint="next"
-              aria-label="${d.weekday} ${d.month} ${d.day}">
-          </label>`).join('')}
+            <div class="plan-meals">
+              ${MEALS.map((m) => `
+                <label class="plan-meal">
+                  <span class="plan-meal-name">${m.label}</span>
+                  <input class="plan-input" data-date="${d.iso}" data-meal="${m.key}" value="${esc(mealMap(s, m.key)[d.iso] || '')}"
+                    list="meal-names" autocomplete="off" enterkeyhint="next"
+                    aria-label="${m.label}, ${d.weekday} ${d.month} ${d.day}">
+                </label>`).join('')}
+            </div>
+          </div>`).join('')}
       </div>`).join('')}
     <p class="hint" style="margin:10px 4px 0">Type anything: a recipe, “Soup leftovers”, “Pizza night”. It saves as you type.
       Past weeks clear themselves.</p>
-    <div class="week-footer" id="plan-footer" ${Object.keys(s.plan).length ? '' : 'hidden'}>
+    <div class="week-footer" id="plan-footer" ${planHasAnything(s) ? '' : 'hidden'}>
       <button class="btn block danger" data-action="clear-plan">Clear meal plan</button>
     </div>`;
 }
 
 function savePlanDay(input) {
   const s = store.get();
+  const map = mealMap(s, input.dataset.meal);
   const text = input.value;
-  if (text.trim()) s.plan[input.dataset.date] = text;
-  else delete s.plan[input.dataset.date];
+  if (text.trim()) map[input.dataset.date] = text;
+  else delete map[input.dataset.date];
   store.persist();
   const footer = $('#plan-footer');
-  if (footer) footer.hidden = !Object.keys(s.plan).length;
+  if (footer) footer.hidden = !planHasAnything(s);
 }
 
 // ---------- This Week tab ----------
@@ -882,7 +895,7 @@ const actions = {
   },
   'clear-plan': () => {
     if (!confirm('Clear both weeks of the meal plan? Your shopping list stays as it is.')) return;
-    store.update((s) => { s.plan = {}; });
+    store.update((s) => { s.plan = {}; s.lunch = {}; });
     toast('Meal plan cleared');
   },
   'pantry-remove': (el) => store.update((s) => { s.pantry = s.pantry.filter((k) => k !== el.dataset.key); }),
