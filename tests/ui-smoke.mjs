@@ -280,6 +280,18 @@ click($('[data-action="close-sheet"]'));
 await tick();
 check(text($('.plan-date')).startsWith('Mon') && text($$('.plan-date')[6]).startsWith('Sun'), 'Settings toggle makes the plan start on Monday');
 check($(`.plan-input[data-date="${nextSunday.dataset.date}"]`)?.value === 'Pizza night', 'entries stay on their dates after switching');
+const store0 = () => JSON.parse(window.localStorage.getItem('meal-planner:v1'));
+click($('[data-tab="recipes"]'));
+click($('.recipe-card [data-action="toggle-week"]'));
+click($('[data-tab="plan"]'));
+const listBefore = JSON.stringify(store0().week);
+check(store0().week.recipeIds.length === 1, 'a meal is on the shopping list before clearing the plan');
+click($('[data-action="clear-plan"]'));
+check($$('.plan-input').every((i) => !i.value) && JSON.stringify(store0().plan) === '{}', 'Clear meal plan empties both weeks');
+check(JSON.stringify(store0().week) === listBefore, 'clearing the plan leaves the shopping list alone');
+check($('#plan-footer').hidden, 'Clear button hides when the plan is empty');
+typeIn($$('.plan-input')[2], 'Chili');
+check(!$('#plan-footer').hidden, 'Clear button appears as soon as she types something');
 
 // 13. Older saved data: sample recipes pick up "uses all" flags, her own recipes don't change
 const store = await import(pathToFileURL(path.join(root, 'js/store.js')).href);

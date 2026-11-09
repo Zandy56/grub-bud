@@ -71,6 +71,9 @@ for (const phone of PHONES) {
   await check('Recipes');
   await tap('#tabbar [data-tab="plan"]');
   await page.$eval('.plan-input', (el) => { el.value = 'A really long dinner name that goes on and on and on'; });
+  const clearShown = await page.$eval('[data-action="clear-plan"]', (el) => el.offsetParent !== null);
+  if (clearShown) failures++;
+  console.log(`${clearShown ? 'FAIL' : 'PASS'}  ${phone.name} (${phone.width}px) · Clear button hidden on an empty plan`);
   await check('Meal Plan');
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/plan-${phone.width}.png`, fullPage: true });
   await tap('#tabbar [data-tab="recipes"]');

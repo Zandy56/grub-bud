@@ -406,6 +406,7 @@ input[list]::-webkit-calendar-picker-indicator { display: none !important; }
 }
 
 .week-footer { margin-top: 28px; display: grid; gap: 10px; }
+.week-footer[hidden] { display: none; }
 
 /* ---------- What else ---------- */
 

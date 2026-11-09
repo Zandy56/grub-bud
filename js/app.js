@@ -142,7 +142,10 @@ function planView(s) {
           </label>`).join('')}
       </div>`).join('')}
     <p class="hint" style="margin:10px 4px 0">Type anything: a recipe, “Soup leftovers”, “Pizza night”. It saves as you type.
-      Past weeks clear themselves.</p>`;
+      Past weeks clear themselves.</p>
+    <div class="week-footer" id="plan-footer" ${Object.keys(s.plan).length ? '' : 'hidden'}>
+      <button class="btn block danger" data-action="clear-plan">Clear meal plan</button>
+    </div>`;
 }
 
 function savePlanDay(input) {
@@ -151,6 +154,8 @@ function savePlanDay(input) {
   if (text.trim()) s.plan[input.dataset.date] = text;
   else delete s.plan[input.dataset.date];
   store.persist();
+  const footer = $('#plan-footer');
+  if (footer) footer.hidden = !Object.keys(s.plan).length;
 }
 
 // ---------- This Week tab ----------
@@ -874,6 +879,11 @@ const actions = {
     if (!confirm(`Clear this week’s meals and shopping list?${pantryOn ? ' Your pantry stays as it is.' : ''}`)) return;
     store.update((s) => { s.week = store.emptyWeek(); });
     toast('Fresh week. Pick some meals!');
+  },
+  'clear-plan': () => {
+    if (!confirm('Clear both weeks of the meal plan? Your shopping list stays as it is.')) return;
+    store.update((s) => { s.plan = {}; });
+    toast('Meal plan cleared');
   },
   'pantry-remove': (el) => store.update((s) => { s.pantry = s.pantry.filter((k) => k !== el.dataset.key); }),
   'pantry-clear': () => {
